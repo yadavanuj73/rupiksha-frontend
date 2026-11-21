@@ -26,14 +26,6 @@ const Header = ({ onAddMoney, onProfileClick, onMenuClick }) => {
             if (typeof refreshWallet === 'function') {
                 await refreshWallet();
             }
-            if (typeof dataService?.fetchUserProfile === 'function') {
-                await dataService.fetchUserProfile(true);
-            }
-            const curUser = dataService.getCurrentUser();
-            const uid = curUser?.id || curUser?.userId;
-            if (uid && typeof dataService?.getWalletBalance === 'function') {
-                await dataService.getWalletBalance(uid, true);
-            }
         } catch (err) {
             console.warn('[Header] Wallet refresh error:', err);
         } finally {

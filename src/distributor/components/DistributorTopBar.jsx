@@ -85,7 +85,6 @@ const DistributorTopBar = ({ onMenuClick }) => {
         try {
             await Promise.allSettled([
                 typeof refreshWallet === 'function' ? refreshWallet() : Promise.resolve(),
-                typeof dataService?.fetchUserProfile === 'function' ? dataService.fetchUserProfile(true) : Promise.resolve(),
                 loadDist(true, true)
             ]);
         } catch (err) {

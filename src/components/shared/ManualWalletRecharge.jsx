@@ -243,21 +243,21 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 Step 1: Select Bank
                             </h3>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-400">
+                        <span className="text-[10px] font-black text-slate-900">
                             {accounts.length} Active {accounts.length === 1 ? 'Bank' : 'Banks'}
                         </span>
                     </div>
 
                     {loadingAccounts ? (
-                        <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-400">
+                        <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-900">
                             <Loader2 size={22} className="animate-spin text-blue-600" />
-                            <p className="text-xs font-bold">Loading receiving banks...</p>
+                            <p className="text-xs font-black text-slate-900">Loading receiving banks...</p>
                         </div>
                     ) : accounts.length === 0 ? (
-                        <div className="py-8 text-center text-slate-400 space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-4">
-                            <Building2 size={26} className="mx-auto text-slate-300" />
-                            <p className="text-xs font-bold text-slate-700">No active receiving banks</p>
-                            <p className="text-[11px] text-slate-500">Please contact administrators to configure receiving banks.</p>
+                        <div className="py-8 text-center text-slate-900 space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-4">
+                            <Building2 size={26} className="mx-auto text-slate-700" />
+                            <p className="text-xs font-black text-slate-900">No active receiving banks</p>
+                            <p className="text-[11px] text-slate-900 font-bold">Please contact administrators to configure receiving banks.</p>
                         </div>
                     ) : (
                         /* Vertical scroll list isolated to bank cards only */
@@ -271,14 +271,14 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                         className={`relative p-3 rounded-xl border-2 transition-all cursor-pointer ${
                                             isSelected
                                                 ? 'border-blue-600 bg-blue-50/40 shadow-sm shadow-blue-500/10'
-                                                : 'border-slate-200/90 hover:border-slate-300 bg-white hover:bg-slate-50/70'
+                                                : 'border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50/70'
                                         }`}
                                     >
                                         {/* Card Header: Icon + Bank Name & Branch + Selection Badge */}
                                         <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                                    isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                                                    isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-900'
                                                 }`}>
                                                     <Landmark size={14} />
                                                 </div>
@@ -286,13 +286,13 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                                     <p className="text-xs font-black text-slate-900 uppercase truncate leading-tight">
                                                         {acc.bankName}
                                                     </p>
-                                                    <p className="text-[10px] text-slate-500 font-semibold truncate">
+                                                    <p className="text-[10px] text-slate-900 font-bold truncate">
                                                         {acc.branch || 'Main Branch'}
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
-                                                isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                                                isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-400 bg-white'
                                             }`}>
                                                 {isSelected && <Check size={10} strokeWidth={3} />}
                                             </div>
@@ -301,14 +301,14 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                         {/* Details */}
                                         <div className="pt-2 space-y-1.5 text-xs">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Holder</span>
-                                                <span className="font-bold text-slate-900 truncate max-w-[160px] text-right text-xs">{acc.accountHolderName}</span>
+                                                <span className="text-[10px] font-black text-slate-900 uppercase tracking-wider">Account Holder</span>
+                                                <span className="font-black text-slate-900 truncate max-w-[160px] text-right text-xs">{acc.accountHolderName}</span>
                                             </div>
 
                                             <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Number</span>
+                                                <span className="text-[10px] font-black text-slate-900 uppercase tracking-wider">Account Number</span>
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-xs">
+                                                    <span className="font-mono font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-xs">
                                                         {acc.accountNumberMasked}
                                                     </span>
                                                     <button
@@ -318,17 +318,17 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                                             copyToClipboard(acc.accountNumberMasked, `acc-${acc.id}`);
                                                         }}
                                                         title="Copy Account Number"
-                                                        className="p-1 hover:bg-slate-200/70 rounded text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                                                        className="p-1 hover:bg-slate-200 rounded text-slate-900 hover:text-black transition-colors cursor-pointer"
                                                     >
-                                                        {copiedField === `acc-${acc.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                        {copiedField === `acc-${acc.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} className="text-slate-900" />}
                                                     </button>
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">IFSC Code</span>
+                                                <span className="text-[10px] font-black text-slate-900 uppercase tracking-wider">IFSC Code</span>
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-xs">
+                                                    <span className="font-mono font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-xs">
                                                         {acc.ifscCode}
                                                     </span>
                                                     <button
@@ -338,9 +338,9 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                                             copyToClipboard(acc.ifscCode, `ifsc-${acc.id}`);
                                                         }}
                                                         title="Copy IFSC"
-                                                        className="p-1 hover:bg-blue-100 rounded text-blue-500 hover:text-blue-800 transition-colors cursor-pointer"
+                                                        className="p-1 hover:bg-slate-200 rounded text-slate-900 hover:text-black transition-colors cursor-pointer"
                                                     >
-                                                        {copiedField === `ifsc-${acc.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                        {copiedField === `ifsc-${acc.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} className="text-slate-900" />}
                                                     </button>
                                                 </div>
                                             </div>
@@ -364,7 +364,7 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 Step 2: Enter Transfer Details
                             </h3>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-400">All fields required</span>
+                        <span className="text-[10px] font-black text-slate-900">All fields required</span>
                     </div>
 
                     {/* Compact 3-Column Grid for All 6 Form Fields on Desktop */}
@@ -374,11 +374,11 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                             <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider flex items-center justify-between">
                                 <span>Amount (₹) *</span>
                                 {amount && !isNaN(parseFloat(amount)) && (
-                                    <span className="text-blue-600 font-bold lowercase text-[10px]">{fmtINR(amount)}</span>
+                                    <span className="text-blue-700 font-black lowercase text-[10px]">{fmtINR(amount)}</span>
                                 )}
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-900 font-black text-xs">₹</span>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -386,8 +386,8 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                     value={amount}
                                     onChange={e => setAmount(e.target.value)}
                                     placeholder="e.g. 5000"
-                                    className={`w-full pl-7 pr-3 py-2 bg-slate-50 border rounded-xl text-xs font-black text-slate-900 outline-none transition-all ${
-                                        errors.amount ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                    className={`w-full pl-7 pr-3 py-2 bg-slate-50 border rounded-xl text-xs font-black text-slate-900 placeholder:text-slate-600 outline-none transition-all ${
+                                        errors.amount ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 focus:border-blue-600 focus:bg-white'
                                     }`}
                                 />
                             </div>
@@ -404,8 +404,8 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 value={utrNumber}
                                 onChange={e => setUtrNumber(e.target.value)}
                                 placeholder="12-digit UTR or Ref ID"
-                                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold text-slate-900 outline-none transition-all ${
-                                    errors.utrNumber ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-black text-slate-900 placeholder:text-slate-600 outline-none transition-all ${
+                                    errors.utrNumber ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 focus:border-blue-600 focus:bg-white'
                                 }`}
                             />
                             {errors.utrNumber && <p className="text-[10px] font-bold text-rose-600">{errors.utrNumber}</p>}
@@ -419,10 +419,10 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                             <select
                                 value={method}
                                 onChange={e => setMethod(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-black text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
                             >
                                 {PAYMENT_MODES.map(m => (
-                                    <option key={m} value={m}>{m}</option>
+                                    <option key={m} value={m} className="text-slate-900 font-bold">{m}</option>
                                 ))}
                             </select>
                         </div>
@@ -437,8 +437,8 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 value={paymentBank}
                                 onChange={e => setPaymentBank(e.target.value)}
                                 placeholder="e.g. SBI, HDFC, Kotak"
-                                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold text-slate-900 outline-none transition-all ${
-                                    errors.paymentBank ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 focus:border-blue-600 focus:bg-white'
+                                className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-black text-slate-900 placeholder:text-slate-600 outline-none transition-all ${
+                                    errors.paymentBank ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 focus:border-blue-600 focus:bg-white'
                                 }`}
                             />
                             {errors.paymentBank && <p className="text-[10px] font-bold text-rose-600">{errors.paymentBank}</p>}
@@ -453,7 +453,7 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 type="datetime-local"
                                 value={paymentDateTime}
                                 onChange={e => setPaymentDateTime(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-black text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all cursor-pointer"
                             />
                         </div>
 
@@ -468,7 +468,7 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 value={userNote}
                                 onChange={e => setUserNote(e.target.value)}
                                 placeholder="e.g. Daily wallet recharge"
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-all"
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 placeholder:text-slate-600 outline-none focus:border-blue-600 focus:bg-white transition-all"
                             />
                         </div>
                     </div>
@@ -479,7 +479,7 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                             <label className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
                                 Upload Transaction Proof *
                             </label>
-                            <span className="text-[10px] text-slate-400 font-medium">JPEG, PNG, WebP · Max 5MB</span>
+                            <span className="text-[10px] text-slate-900 font-black">JPEG, PNG, WebP · Max 5MB</span>
                         </div>
 
                         <input
@@ -496,32 +496,32 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
                                 className={`border border-dashed rounded-xl py-2 px-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer ${
                                     errors.proof
                                         ? 'border-rose-300 bg-rose-50/20'
-                                        : 'border-slate-200 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/20'
+                                        : 'border-slate-300 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/20'
                                 }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
                                         <Upload size={14} />
                                     </div>
-                                    <p className="text-xs font-bold text-slate-800 truncate">
+                                    <p className="text-xs font-black text-slate-900 truncate">
                                         Click to upload transfer slip or receipt image
                                     </p>
                                 </div>
-                                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-white border border-slate-200 text-slate-700 shadow-2xs shrink-0">
+                                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-white border border-slate-300 text-slate-900 shadow-2xs shrink-0">
                                     Browse File
                                 </span>
                             </div>
                         ) : (
-                            <div className="py-1.5 px-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                            <div className="py-1.5 px-3 rounded-xl border border-slate-300 bg-slate-50 flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <img
                                         src={proofPreviewUrl}
                                         alt="Receipt Preview"
-                                        className="w-8 h-8 object-cover rounded-lg border border-slate-200 shrink-0"
+                                        className="w-8 h-8 object-cover rounded-lg border border-slate-300 shrink-0"
                                     />
                                     <div className="min-w-0">
-                                        <p className="text-xs font-bold text-slate-900 truncate">{proofFile?.name}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium">
+                                        <p className="text-xs font-black text-slate-900 truncate">{proofFile?.name}</p>
+                                        <p className="text-[10px] text-slate-900 font-bold">
                                             {(proofFile?.size / 1024).toFixed(1)} KB · Validated Image
                                         </p>
                                     </div>
@@ -540,11 +540,11 @@ const ManualWalletRecharge = ({ portalTitle = 'Retailer Portal', onSuccess }) =>
 
                     {/* Submit Button Bar */}
                     <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-                        <div className="text-xs text-slate-600 font-medium truncate">
+                        <div className="text-xs text-slate-900 font-bold truncate">
                             {selectedAccount && amount && !isNaN(parseFloat(amount)) ? (
-                                <span>Requesting <strong className="text-slate-900">{fmtINR(amount)}</strong> to <strong className="text-slate-900">{selectedAccount.bankName}</strong></span>
+                                <span>Requesting <strong className="text-slate-950 font-black">{fmtINR(amount)}</strong> to <strong className="text-slate-950 font-black">{selectedAccount.bankName}</strong></span>
                             ) : (
-                                <span className="text-slate-400 text-[11px]">Select a bank and fill required fields</span>
+                                <span className="text-slate-900 font-black text-[11px]">Select a bank and fill required fields</span>
                             )}
                         </div>
 
