@@ -33,7 +33,7 @@ public class LocalPrivateProofStorageService implements ProofStorageService {
     private static final byte[] RIFF_MAGIC = new byte[]{(byte) 0x52, (byte) 0x49, (byte) 0x46, (byte) 0x46}; // "RIFF"
     private static final byte[] WEBP_MAGIC = new byte[]{(byte) 0x57, (byte) 0x45, (byte) 0x42, (byte) 0x50}; // "WEBP"
 
-    private final Path storageRoot;
+    private Path storageRoot;
 
     public LocalPrivateProofStorageService(
             @Value("${app.storage.proof-dir:${PROOF_STORAGE_PATH:uploads/proofs}}") String storageDirPath) {
@@ -45,9 +45,15 @@ public class LocalPrivateProofStorageService implements ProofStorageService {
         try {
             Files.createDirectories(storageRoot);
             log.info("Initialized secure private proof storage directory: {}", storageRoot);
-        } catch (IOException e) {
-            log.error("Failed to create proof storage directory at {}", storageRoot, e);
-            throw new IllegalStateException("Could not create proof storage directory", e);
+        } catch (Exception e) {
+            log.warn("Failed to create proof storage directory at {}: {}. Falling back to system temp directory.", storageRoot, e.getMessage());
+            try {
+                this.storageRoot = Paths.get(System.getProperty("java.io.tmpdir"), "rupiksha-proofs").toAbsolutePath().normalize();
+                Files.createDirectories(this.storageRoot);
+                log.info("Initialized fallback proof storage directory: {}", this.storageRoot);
+            } catch (Exception ex) {
+                log.error("Failed to initialize fallback proof storage directory at {}", this.storageRoot, ex);
+            }
         }
     }
 

@@ -1,6 +1,7 @@
-// Base API URL
-const rawApiUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || GCP_BACKEND).replace(/\/$/, '');
-const BASE_URL = rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl}/api/v1`;
+import { BACKEND_URL } from './config';
+
+// Base API URL - centralized from config
+const BASE_URL = BACKEND_URL;
 
 // Token helper — admin path always uses admin token, member imp-tab uses imp token
 const getToken = () => {
