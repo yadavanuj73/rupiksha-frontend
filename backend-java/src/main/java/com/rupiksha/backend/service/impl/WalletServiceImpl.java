@@ -4,6 +4,7 @@ import com.rupiksha.backend.api.dto.WalletDtos;
 import com.rupiksha.backend.config.AppProperties;
 import com.rupiksha.backend.domain.*;
 import com.rupiksha.backend.repository.*;
+import com.rupiksha.backend.service.ProofStorageService;
 import com.rupiksha.backend.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
