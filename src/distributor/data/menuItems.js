@@ -14,7 +14,7 @@ export const menuItems = [
             { title: "Distributor Receipt", icon: FileText, path: "/distributor/transactions/distributor-receipt" },
             { title: "Retailer Receipt", icon: FileText, path: "/distributor/transactions/retailer-receipt" },
             { title: "Wallet to Wallet", icon: Coins, path: "/distributor/transactions/wallet-to-wallet" },
-            { title: "Wallet History", icon: Wallet, path: "/distributor/transactions/wallet-history" }
+            { title: "Wallet", icon: Wallet, path: "/distributor/transactions/wallet" }
         ]
     },
     {

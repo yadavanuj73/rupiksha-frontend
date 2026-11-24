@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { 
     FileText, Search, Download, Calendar, IndianRupee, 
     ArrowRight, Filter, RefreshCw, CheckCircle, Clock, 
     AlertCircle, Smartphone, Fingerprint, ChevronRight,
     ArrowUpRight, ArrowDownRight, Printer, Share2, Coins,
-    Landmark, CreditCard, Copy, Eye, X, HelpCircle, Building2
+    Landmark, CreditCard, Copy, Eye, X, HelpCircle, Building2, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { transactionService } from '../../services/apiService';
@@ -79,10 +79,11 @@ const StatusBadge = ({ status }) => {
 // MAIN REPORTS COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
-const Reports = () => {
+const Reports = ({ defaultReport = 'aeps_1' }) => {
     const location = useLocation();
+    const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
-    const reportType = queryParams.get('report') || 'aeps_1';
+    const reportType = queryParams.get('report') || defaultReport;
 
     if (reportType === 'wallet_to_wallet') {
         return <Navigate to="/transactions/wallet-to-wallet" replace />;
@@ -603,7 +604,13 @@ const Reports = () => {
 
                 // 4. Amount
                 doc.setFont('helvetica', 'bold');
-                const amtStr = 'Rs. ' + Number(row.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                const isDebit = row.entryType === 'DEBIT';
+                const sign = reportType === 'wallet' ? (isDebit ? '- ' : '+ ') : '';
+                const amtStr = sign + 'Rs. ' + Number(Math.abs(row.amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                if (reportType === 'wallet') {
+                    if (isDebit) doc.setTextColor(225, 29, 72);
+                    else doc.setTextColor(16, 185, 129);
+                }
                 doc.text(amtStr, xOffset + colWidths[3] - 3, currentY + 5, { align: 'right' });
                 xOffset += colWidths[3];
 
@@ -663,6 +670,24 @@ const Reports = () => {
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 relative z-10">
+                    {reportType === 'wallet' && (
+                        <button 
+                            onClick={() => {
+                                if (location.pathname.startsWith('/super-distributor')) {
+                                    navigate('/super-distributor/transactions/add-money');
+                                } else if (location.pathname.startsWith('/distributor')) {
+                                    navigate('/distributor/transactions/add-money');
+                                } else {
+                                    navigate('/add-money');
+                                }
+                            }}
+                            className="flex items-center gap-2 px-5 h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-[2px] shadow-lg transition-all active:scale-95 cursor-pointer"
+                            title="Add Money / Request Funds"
+                        >
+                            <Plus size={14} />
+                            Add Money
+                        </button>
+                    )}
                     <button 
                         onClick={exportToPDF}
                         disabled={loading}
@@ -844,9 +869,9 @@ const Reports = () => {
                                 {[
                                     { id: 'transactionId', label: 'Transaction ID' },
                                     { id: 'createdAt', label: 'Timestamp' },
-                                    { id: 'serviceType', label: 'Particulars / Domain' },
+                                    { id: 'serviceType', label: reportType === 'wallet' ? 'Particulars / Context' : 'Particulars / Domain' },
                                     { id: 'amount', label: 'Amount' },
-                                    { id: 'commission', label: (reportType === 'payout_hub' || reportType === 'payout') ? 'Payout Charges' : 'Commission' },
+                                    { id: 'commission', label: (reportType === 'payout_hub' || reportType === 'payout') ? 'Payout Charges' : (reportType === 'wallet' ? 'Charges / Comm' : 'Commission') },
                                     { id: 'status', label: 'Status' },
                                     { id: 'actions', label: 'Receipt' }
                                 ].map((h) => (
@@ -933,11 +958,28 @@ const Reports = () => {
                                                                 t.serviceType?.toLowerCase().includes('cms') ? <Building2 size={14} className="text-purple-600" /> :
                                                                     <Coins size={14} className="text-purple-500" />}
                                                 </div>
-                                                <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider">{t.serviceType || 'Utility'}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider">
+                                                        {t.serviceType ? t.serviceType.replace(/_/g, ' ') : (reportType === 'wallet' ? 'Wallet Transaction' : 'Utility')}
+                                                    </span>
+                                                    {t.remarks && (
+                                                        <span className="text-[9px] font-medium text-slate-400 truncate max-w-xs" title={t.remarks}>
+                                                            {t.remarks}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4.5 font-black text-[13px] text-slate-800 tracking-tighter">
-                                            ₹{(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        <td className="px-6 py-4.5 font-black text-[13px] tracking-tighter">
+                                            {reportType === 'wallet' ? (
+                                                <span className={t.entryType === 'DEBIT' ? 'text-rose-600' : 'text-emerald-600'}>
+                                                    {t.entryType === 'DEBIT' ? '-' : '+'} ₹{(Math.abs(t.amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-800">
+                                                    ₹{(t.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4.5 font-black text-[13px] text-emerald-600 tracking-tighter">
                                             {t.commission > 0 ? `+ ₹${(t.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00'}

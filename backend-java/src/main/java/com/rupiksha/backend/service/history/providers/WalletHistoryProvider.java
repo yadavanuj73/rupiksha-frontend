@@ -152,6 +152,7 @@ public class WalletHistoryProvider extends BaseHistoryProvider {
                 .bankReference(entry.getReferenceId())
                 .retailerId(entry.getWallet().getUser().getId().toString())
                 .serviceType(entry.getTransactionContext() != null ? entry.getTransactionContext().name() : entry.getEntryType())
+                .entryType(entry.getEntryType())
                 .provider("INTERNAL")
                 .amount(entry.getAmount())
                 .commission(commission)

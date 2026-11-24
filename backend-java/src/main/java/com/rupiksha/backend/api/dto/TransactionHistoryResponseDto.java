@@ -24,6 +24,7 @@ public class TransactionHistoryResponseDto {
     private BigDecimal commission;
     private BigDecimal openingBalance;
     private BigDecimal closingBalance;
+    private String entryType;
     private String status;
     private String remarks;
     private LocalDateTime createdAt;
