@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users, Search, Download, UserPlus, ShieldCheck,
     CheckCircle2, AlertCircle, Clock, X, Eye, Wallet,
-    Smartphone, Mail, MapPin, Zap, Package, Edit3, Trash2,
+    Smartphone, Mail, MapPin, Package, Edit3, Trash2,
     Lock, Save, Loader2, Image as ImageIcon, TrendingUp,
     BarChart3, RefreshCw, IndianRupee, Layers, Check,
     Building2, Landmark, Coins, ArrowUpRight, Award, Shield,
@@ -16,8 +16,6 @@ import { dataService, BACKEND_URL } from '../../services/dataService';
 import { transactionService } from '../../services/apiService';
 import { sharedDataService } from '../../services/sharedDataService';
 import NetworkRegistrationForm from '../../components/shared/NetworkRegistrationForm';
-
-const getToken = () => localStorage.getItem('rupiksha_token') || localStorage.getItem('rupiksha_distributor_token') || localStorage.getItem('rupiksha_admin_token');
 
 const fmtWallet = (v) => {
     const n = parseFloat(String(v || 0).replace(/,/g, ''));
@@ -371,29 +369,6 @@ const Retailers = () => {
         setShowAddModal(false);
         setShowSuccess(true);
         loadData();
-    };
-
-    // Impersonate / Login as Retailer
-    const handleLoginAsMember = async (member) => {
-        const token = getToken() || `imp_token_${Date.now()}`;
-        const impersonatedUser = {
-            id: member.id,
-            username: member.username || member.mobile,
-            mobile: member.mobile,
-            fullName: member.fullName || member.name,
-            name: member.fullName || member.name,
-            roles: ['RETAILER'],
-            role: 'RETAILER',
-            kycStatus: 'APPROVED',
-            status: 'APPROVED',
-            impersonated: true
-        };
-
-        const key = `_imp_${Date.now()}`;
-        localStorage.setItem(key, JSON.stringify({ token, user: impersonatedUser }));
-        await new Promise(r => setTimeout(r, 200));
-        window.open(`${window.location.origin}/dashboard?_imp=${encodeURIComponent(key)}`, '_blank');
-        showToast(`Opened Retailer Portal as ${member.fullName}`);
     };
 
     // Open Services Modal
@@ -1298,12 +1273,13 @@ const Retailers = () => {
                                     </div>
                                 </div>
 
-                                <div className="pt-2 flex gap-3">
+                                <div className="pt-2 flex justify-end">
                                     <button
-                                        onClick={() => { setSelectedRetailer(null); handleLoginAsMember(selectedRetailer); }}
-                                        className="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20"
+                                        type="button"
+                                        onClick={() => setSelectedRetailer(null)}
+                                        className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all"
                                     >
-                                        <Zap size={14} /> Open Retailer Portal
+                                        Close
                                     </button>
                                 </div>
                             </div>

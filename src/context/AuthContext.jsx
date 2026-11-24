@@ -75,6 +75,20 @@ export function AuthProvider({ children }) {
     const attemptImpersonation = async () => {
       if (!impKey) return false;
       console.log('[AuthContext] Found impKey:', impKey);
+      
+      // Strict Security Check: Impersonation is strictly authorized for Admin only
+      const adminToken = localStorage.getItem('rupiksha_admin_token');
+      const adminUser = localStorage.getItem('rupiksha_admin_user');
+      const hasAdminAuth = !!(adminToken || adminUser);
+      if (!hasAdminAuth) {
+        console.warn('[AuthContext] Impersonation rejected: unauthorized attempt. Only Admin has authority to login or impersonate other accounts.');
+        try { localStorage.removeItem(impKey); } catch (_) {}
+        params.delete('_imp');
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+        return false;
+      }
+
       // Retry mechanism: localStorage may not be immediately available in new tab
       for (let attempts = 1; attempts <= 10; attempts++) {
         try {

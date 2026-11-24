@@ -17,8 +17,6 @@ import { transactionService } from '../../services/apiService';
 import { sharedDataService } from '../../services/sharedDataService';
 import NetworkRegistrationForm from '../../components/shared/NetworkRegistrationForm';
 
-const getToken = () => localStorage.getItem('rupiksha_token') || localStorage.getItem('rupiksha_super_distributor_token') || localStorage.getItem('rupiksha_admin_token');
-
 const fmtWallet = (v) => {
     const n = parseFloat(String(v || 0).replace(/,/g, ''));
     return isNaN(n) ? '₹0.00' : '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -372,29 +370,6 @@ const Retailers = () => {
         setShowAddModal(false);
         setShowSuccess(true);
         loadData();
-    };
-
-    // Impersonate / Login as Retailer
-    const handleLoginAsMember = async (member) => {
-        const token = getToken() || `imp_token_${Date.now()}`;
-        const impersonatedUser = {
-            id: member.id,
-            username: member.username || member.mobile,
-            mobile: member.mobile,
-            fullName: member.fullName || member.name,
-            name: member.fullName || member.name,
-            roles: ['RETAILER'],
-            role: 'RETAILER',
-            kycStatus: 'APPROVED',
-            status: 'APPROVED',
-            impersonated: true
-        };
-
-        const key = `_imp_${Date.now()}`;
-        localStorage.setItem(key, JSON.stringify({ token, user: impersonatedUser }));
-        await new Promise(r => setTimeout(r, 200));
-        window.open(`${window.location.origin}/dashboard?_imp=${encodeURIComponent(key)}`, '_blank');
-        showToast(`Opened Retailer Portal as ${member.fullName}`);
     };
 
     // Open Services Modal

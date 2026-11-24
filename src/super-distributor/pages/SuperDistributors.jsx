@@ -435,13 +435,11 @@ const SuperDistributors = () => {
 
                                         <div className="flex gap-4 pt-2">
                                             <button
-                                                onClick={() => {
-                                                    sharedDataService.setCurrentDistributor(selectedDistributor);
-                                                    window.open('/distributor', '_blank');
-                                                }}
-                                                className="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                type="button"
+                                                onClick={() => setSelectedDistributor(null)}
+                                                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black py-3.5 rounded-2xl text-[10px] uppercase tracking-widest transition-all flex items-center justify-center"
                                             >
-                                                <Eye size={14} /> Full Access
+                                                Close
                                             </button>
                                         </div>
                                     </div>

@@ -110,7 +110,7 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
         }
         
         if (role === 'DISTRIBUTOR') {
-            if (userRoles.includes('DISTRIBUTOR') || userRoles.includes('SUPER_DISTRIBUTOR')) return children;
+            if (userRoles.includes('DISTRIBUTOR')) return children;
         }
 
         // Role mapping for Super Distributor / Distributor

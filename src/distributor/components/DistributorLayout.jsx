@@ -38,7 +38,7 @@ const DistributorLayout = () => {
             return;
         }
 
-        const allowed = ['DISTRIBUTOR', 'SUPER_DISTRIBUTOR', 'ADMIN', 'SUPER_DISTRIBUTOR', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+        const allowed = ['DISTRIBUTOR', 'ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
         if (!allowed.includes(user.role)) {
             navigate('/', { replace: true });
             return;
