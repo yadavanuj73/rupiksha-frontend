@@ -9,7 +9,7 @@ import { useWallet } from '../../context/WalletContext';
 const SuperDistributorTopBar = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const { lockTimeLeft, logoutTimeLeft } = useAuth();
-    const { refreshWallet, isRefreshing: contextRefreshing } = useWallet();
+    const { balance: contextBalance, refreshWallet, isRefreshing: contextRefreshing } = useWallet();
     const [localRefreshing, setLocalRefreshing] = useState(false);
     const isRefreshing = localRefreshing || contextRefreshing;
     const [dist, setDist] = useState(null);
@@ -112,7 +112,9 @@ const SuperDistributorTopBar = ({ onMenuClick }) => {
     const sdCurrentUid = dist?.id || dist?.userId || dist?.username;
     const userPhoto = dist?.profilePhoto || dist?.photoUrl || (sdCurrentUid ? localStorage.getItem(`rupiksha_photo_${sdCurrentUid}`) : null);
     const initials = (dist?.name || 'SD').charAt(0).toUpperCase();
-    const walletBal = dist?.wallet?.balance ?? dist?.balance ?? '0.00';
+    const walletBal = contextBalance !== undefined && contextBalance !== null
+        ? parseFloat(contextBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })
+        : (dist?.wallet?.balance ?? dist?.balance ?? '0.00');
     const distName = dist?.name || 'Super Distributor';
     const rawKyc = String(dist?.kycStatus || dist?.profile_kyc_status || '').toUpperCase();
     const kycChip = rawKyc === 'APPROVED' || rawKyc === 'DONE'

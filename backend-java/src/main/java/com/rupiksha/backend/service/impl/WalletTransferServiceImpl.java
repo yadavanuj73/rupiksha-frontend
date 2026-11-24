@@ -35,6 +35,7 @@ public class WalletTransferServiceImpl implements WalletTransferService {
     private final WalletTransferRepository walletTransferRepository;
     @org.springframework.context.annotation.Lazy
     private final com.rupiksha.backend.service.Aeps2faSettlementService aeps2faSettlementService;
+    private final org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
 
     private String cleanMobile(String mobile) {
         if (mobile == null) return "";
@@ -302,6 +303,17 @@ public class WalletTransferServiceImpl implements WalletTransferService {
 
         log.info("Wallet transfer committed successfully. Ref: {}, Sender: {}, Recipient: {}, Amount: ₹{}",
                 reference, sender.getUsername(), recipient.getUsername(), amount);
+
+        if (applicationEventPublisher != null) {
+            applicationEventPublisher.publishEvent(
+                    new com.rupiksha.backend.event.WalletBalanceChangedInternalEvent(
+                            sender.getId(), reference, "WALLET_TRANSFER_SENDER", Instant.now())
+            );
+            applicationEventPublisher.publishEvent(
+                    new com.rupiksha.backend.event.WalletBalanceChangedInternalEvent(
+                            recipient.getId(), reference, "WALLET_TRANSFER_RECIPIENT", Instant.now())
+            );
+        }
 
         return toResponse(transfer, senderClosing);
     }
