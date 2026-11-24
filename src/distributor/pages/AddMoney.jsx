@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Wallet, History } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import ManualWalletRecharge from '../../components/shared/ManualWalletRecharge';
 import FundRequestHistoryView from '../../components/shared/FundRequestHistoryView';
 
 const NAVY = '#0f2557';
 
-const AddMoney = () => {
-    const [activeTab, setActiveTab] = useState('recharge');
+const AddMoney = ({ defaultTab = 'recharge' }) => {
+    const location = useLocation();
+    const queryTab = new URLSearchParams(location.search).get('tab');
+    const isHistoryRoute = location.pathname.endsWith('/wallet-history');
+    const initialTab = queryTab || (isHistoryRoute ? 'history' : defaultTab);
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    useEffect(() => {
+        if (queryTab) {
+            setActiveTab(queryTab);
+        } else if (location.pathname.endsWith('/wallet-history')) {
+            setActiveTab('history');
+        } else if (location.pathname.endsWith('/add-money')) {
+            setActiveTab('recharge');
+        }
+    }, [location.pathname, queryTab]);
 
     return (
         <div className="p-2 sm:p-3 max-w-7xl mx-auto space-y-2 pb-1 font-['Inter',sans-serif]">

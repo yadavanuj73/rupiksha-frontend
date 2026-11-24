@@ -309,7 +309,8 @@ function App() {
                 <Route path="transactions/wallet-to-wallet" element={<WalletTransferHistory />} />
                 <Route path="transactions/distributor-receipt" element={<DistributorReceipt />} />
                 <Route path="transactions/retailer-receipt" element={<RetailerReceipt />} />
-                <Route path="transactions/add-money" element={<AddMoney />} />
+                <Route path="transactions/add-money" element={<AddMoney defaultTab="recharge" />} />
+                <Route path="transactions/wallet-history" element={<AddMoney defaultTab="history" />} />
                 <Route path="transactions/axis-cdm" element={<DistributorPlaceholder title="Axis CDM" />} />
                 <Route path="transactions/axis-mapping" element={<DistributorPlaceholder title="Axis Mapping" />} />
                 <Route path="reports" element={<CommissionReport />} />
@@ -368,7 +369,8 @@ function App() {
                 <Route path="transactions/wallet-to-wallet" element={<WalletTransferHistory />} />
                 <Route path="transactions/super-distributor-receipt" element={<SuperDistributorReceipt />} />
                 <Route path="transactions/retailer-receipt" element={<SuperDistributorRetailerReceipt />} />
-                <Route path="transactions/add-money" element={<SuperDistributorAddMoney />} />
+                <Route path="transactions/add-money" element={<SuperDistributorAddMoney defaultTab="recharge" />} />
+                <Route path="transactions/wallet-history" element={<SuperDistributorAddMoney defaultTab="history" />} />
                 <Route path="transactions/axis-cdm" element={<SuperDistributorPlaceholder title="Axis CDM" />} />
                 <Route path="transactions/axis-mapping" element={<SuperDistributorPlaceholder title="Axis Mapping" />} />
                 <Route path="reports" element={<SACommissionReport />} />
