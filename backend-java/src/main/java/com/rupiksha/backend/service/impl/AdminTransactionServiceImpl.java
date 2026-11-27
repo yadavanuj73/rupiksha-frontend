@@ -560,10 +560,24 @@ public class AdminTransactionServiceImpl implements AdminTransactionService {
             String fromDate,
             String toDate,
             Sort sort) {
+        return getAllTransactionsForExport(reportType, search, status, provider, fromDate, toDate, sort, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionHistoryResponseDto> getAllTransactionsForExport(
+            String reportType,
+            String search,
+            String status,
+            String provider,
+            String fromDate,
+            String toDate,
+            Sort sort,
+            com.rupiksha.backend.security.JwtPrincipal principal) {
 
         // For export, fetch up to 3000 records using pagination for safety
         Pageable exportPageable = PageRequest.of(0, 3000, sort != null ? sort : Sort.by(Sort.Direction.DESC, "createdAt"));
-        TransactionHistoryPageResponse response = getTransactions(reportType, search, status, provider, fromDate, toDate, exportPageable);
+        TransactionHistoryPageResponse response = getTransactions(reportType, search, status, provider, fromDate, toDate, exportPageable, principal);
         return response.getData() != null ? response.getData() : Collections.emptyList();
     }
 

@@ -58,9 +58,7 @@ const Admin = () => {
         const roles = Array.isArray(currentUser?.roles) && currentUser.roles.length
             ? currentUser.roles.map((r) => String(r || '').toUpperCase())
             : [String(currentUser?.role || '').toUpperCase()];
-        const hasAdminRole = roles.some((r) =>
-            ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r)
-        );
+        const hasAdminRole = roles.includes('ADMIN');
         const isOtpVerified = sessionStorage.getItem('admin_otp_verified') === 'true';
 
         if (!currentUser || !hasAdminRole || !isOtpVerified) {

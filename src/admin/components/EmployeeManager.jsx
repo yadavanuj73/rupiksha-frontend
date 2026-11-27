@@ -1,617 +1,1305 @@
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Shield, Plus, X, Save, CheckCircle2, MapPin, Activity,
-    RefreshCcw, Users, TrendingUp, Zap, Globe2, Award,
-    ChevronDown, Eye, ToggleLeft, ToggleRight, Search,
-    Mail, Phone, Building2, Lock, UserCheck, Star
+  Shield, Plus, X, Save, CheckCircle2, MapPin, Activity,
+  RefreshCcw, Users, TrendingUp, Eye, Search, Mail, Phone,
+  Lock, KeyRound, UserCheck, AlertCircle, BarChart3, History,
+  Check, Ban, Power, ChevronRight
 } from 'lucide-react';
-import L from 'leaflet';
-import { motion, AnimatePresence } from 'framer-motion';
-import { dataService } from '../../services/dataService';
-import { useAuth } from '../../context/AuthContext';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area
+} from 'recharts';
+import { adminEmployeeService } from '../../services/employeeApiService';
 
-// Fix Leaflet icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-const createIcon = (color) => new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-});
-const icons = {
-    NATIONAL_HEADER: createIcon('gold'),
-    STATE_HEADER: createIcon('blue'),
-    REGIONAL_HEADER: createIcon('green'),
-    ADMIN: createIcon('red')
+const ROLE_META = {
+  NATIONAL_HEADER: {
+    label: 'National Head',
+    badge: 'bg-amber-50 text-amber-800 border-amber-200',
+    desc: 'All-India hierarchy & national business visibility',
+  },
+  STATE_HEADER: {
+    label: 'State Head',
+    badge: 'bg-blue-50 text-blue-800 border-blue-200',
+    desc: 'Scoped strictly to assigned Indian states',
+  },
+  REGIONAL_HEADER: {
+    label: 'Zonal Head',
+    badge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    desc: 'Scoped strictly to assigned zones or city/district clusters',
+  },
 };
 
-const PERMISSIONS_MATRIX = [
-    { category: "DASHBOARD", color: '#6366f1', icon: '📊', items: ["View Live Dashboard", "View Revenue Metrics", "Network Map Access"] },
-    { category: "USER MANAGEMENT", color: '#f59e0b', icon: '👥', items: ["Manage Retailers", "Manage Distributors", "Manage Super/Master Distributors", "View Security Logs"] },
-    { category: "EMPLOYEE MANAGEMENT", color: '#8b5cf6', icon: '🏢', items: ["View Header Employees", "Provision Header Employees", "Promote/Demote Roles"] },
-    { category: "SETTINGS & SERVICES", color: '#ef4444', icon: '⚙️', items: ["Manage System Services (On/Off)", "Configure Commissions"] },
-    { category: "APP CONTENT", color: '#06b6d4', icon: '🎨', items: ["Manage Landing Pages", "Manage Plans & Pricing", "Manage Branding & Carousel"] }
-];
-
-const ROLE_CONFIG = {
-    NATIONAL_HEADER: { label: 'National Header', color: '#f59e0b', bg: 'from-amber-400 to-amber-600', light: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-400', rank: '🥇' },
-    STATE_HEADER: { label: 'State Header', color: '#3b82f6', bg: 'from-blue-400 to-blue-600', light: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-400', rank: '🥈' },
-    REGIONAL_HEADER: { label: 'Regional Header', color: '#10b981', bg: 'from-emerald-400 to-emerald-600', light: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-400', rank: '🥉' },
+const STATUS_BADGE = {
+  ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  INACTIVE: 'bg-slate-100 text-slate-700 border-slate-300',
+  SUSPENDED: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
-export default function EmployeeManager({ currentUserForEmployee = null }) {
-    const { user: currentUser } = useAuth();
-    // If currentUserForEmployee is passed, this is an employee viewing their own profile
-    const viewingAsEmployee = !!currentUserForEmployee;
-    const isAdmin = !viewingAsEmployee && (sessionStorage.getItem('admin_auth') === 'true' || currentUser?.role === 'ADMIN');
-    const [employees, setEmployees] = useState([]);
-    const [showForm, setShowForm] = useState(false);
-    const [activeTab, setActiveTab] = useState('list');
-    const [status, setStatus] = useState(null);
-    const [search, setSearch] = useState('');
-    const [filterRole, setFilterRole] = useState('ALL');
-    const [expandedPerms, setExpandedPerms] = useState({});
-    const [formData, setFormData] = useState({
-        username: '', password: '', confirmPassword: '',
-        name: '', mobile: '', email: '', address: '',
-        role: 'NATIONAL_HEADER', territory: '', profilePhoto: ''
+const formatINR = (val) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(val || 0));
+
+const formatDateTime = (val) => {
+  if (!val) return 'Never';
+  try {
+    return new Date(val).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return String(val);
+  }
+};
+
+export default function EmployeeManager() {
+  const [activeTab, setActiveTab] = useState('directory');
+  const [employees, setEmployees] = useState([]);
+  const [performanceList, setPerformanceList] = useState([]);
+  const [permCatalog, setPermCatalog] = useState([]);
+  const [zoneCatalog, setZoneCatalog] = useState({ zoneToStates: {}, allStates: [] });
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  const [banner, setBanner] = useState(null);
+
+  // Create / Edit Modal State
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [eligibleManagers, setEligibleManagers] = useState([]);
+  const [selectedStates, setSelectedStates] = useState([]);
+  const [selectedZones, setSelectedZones] = useState([]);
+  const [cityClusters, setCityClusters] = useState([]);
+  const [clusterDraft, setClusterDraft] = useState({ stateName: '', cityOrDistrict: '' });
+  const [selectedPermissions, setSelectedPermissions] = useState(new Set());
+  const [stateSearch, setStateSearch] = useState('');
+  const [savingForm, setSavingForm] = useState(false);
+
+  const [formData, setFormData] = useState({
+    employeeCode: '',
+    username: '',
+    fullName: '',
+    mobile: '',
+    email: '',
+    address: '',
+    initialPassword: '',
+    role: 'STATE_HEADER',
+    reportingManagerId: '',
+    status: 'ACTIVE',
+  });
+
+  // Modals: Performance Inspector, Permission Preview, Password Reset
+  const [selectedPerf, setSelectedPerf] = useState(null);
+  const [permPreview, setPermPreview] = useState(null);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [empRes, perfRes, catRes, zoneRes, logsRes] = await Promise.all([
+        adminEmployeeService.listEmployees(),
+        adminEmployeeService.listPerformance({ fromDate, toDate }),
+        adminEmployeeService.getPermissionCatalog(),
+        adminEmployeeService.getZoneCatalog(),
+        adminEmployeeService.getAuditLogs(),
+      ]);
+      setEmployees(Array.isArray(empRes) ? empRes : []);
+      setPerformanceList(Array.isArray(perfRes) ? perfRes : []);
+      setPermCatalog(Array.isArray(catRes) ? catRes : []);
+      if (zoneRes) setZoneCatalog(zoneRes);
+      setAuditLogs(Array.isArray(logsRes) ? logsRes : []);
+    } catch (err) {
+      setBanner({ type: 'error', text: err?.message || 'Failed to load employee module data.' });
+    } finally {
+      setLoading(false);
+    }
+  }, [fromDate, toDate]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  useEffect(() => {
+    if (!showFormModal) return;
+    let active = true;
+    const loadManagers = async () => {
+      if (formData.role === 'NATIONAL_HEADER') {
+        setEligibleManagers([]);
+        return;
+      }
+      try {
+        const res = await adminEmployeeService.listEligibleManagers(formData.role);
+        if (active) setEligibleManagers(Array.isArray(res) ? res : []);
+      } catch {
+        if (active) setEligibleManagers([]);
+      }
+    };
+    loadManagers();
+    return () => {
+      active = false;
+    };
+  }, [showFormModal, formData.role]);
+
+  const openCreateModal = () => {
+    setEditingEmployee(null);
+    setFormData({
+      employeeCode: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+      username: '',
+      fullName: '',
+      mobile: '',
+      email: '',
+      address: '',
+      initialPassword: '',
+      role: 'STATE_HEADER',
+      reportingManagerId: '',
+      status: 'ACTIVE',
     });
-    const [perms, setPerms] = useState({});
-    const [showOTPModal, setShowOTPModal] = useState(false);
-    const [otpValue, setOtpValue] = useState('');
-    const [generatedOTP, setGeneratedOTP] = useState('');
-    const [isVerifying, setIsVerifying] = useState(false);
+    setSelectedStates([]);
+    setSelectedZones([]);
+    setCityClusters([]);
+    setSelectedPermissions(new Set(['VIEW_DASHBOARD', 'VIEW_TRANSACTION_METRICS', 'VIEW_USER_STATISTICS']));
+    setShowFormModal(true);
+  };
 
-    useEffect(() => { loadEmployees(); }, []);
-
-    const loadEmployees = async () => {
-        const allUsers = await dataService.getAllUsers();
-        const headers = allUsers.filter(u => ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER'].includes(u.role));
-        setEmployees(headers);
-    };
-
-    const roleLabels = { NATIONAL_HEADER: 'National Header', STATE_HEADER: 'State Header', REGIONAL_HEADER: 'Regional Header' };
-    const getAvailableRoles = () => {
-        if (isAdmin) return ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER'];
-        if (currentUser?.role === 'NATIONAL_HEADER') return ['STATE_HEADER'];
-        if (currentUser?.role === 'STATE_HEADER') return ['REGIONAL_HEADER'];
-        return [];
-    };
-    const availableRoles = getAvailableRoles();
-
-    const handlePermChange = (cat, item, checked) => setPerms(p => ({ ...p, [`${cat}|${item}`]: checked }));
-    const handleCheckAll = (cat, checked) => {
-        const catData = PERMISSIONS_MATRIX.find(c => c.category === cat);
-        const newP = { ...perms };
-        catData.items.forEach(i => { newP[`${cat}|${i}`] = checked; });
-        setPerms(newP);
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const isEditing = employees.some(emp => emp.username === formData.username);
-        if (!isEditing || formData.password !== '') {
-            if (formData.password !== formData.confirmPassword) { alert("Passwords do not match"); return; }
-            if (formData.password.length < 6) { alert("Password must be at least 6 characters"); return; }
-        }
-        if (!isEditing) {
-            setIsVerifying(true);
-            const res = await dataService.sendEmployeeVerificationOTP(formData.email, formData.name);
-            setIsVerifying(false);
-            if (res.success) { setGeneratedOTP(res.otp); setShowOTPModal(true); }
-            else alert("Failed to send verification email: " + res.message);
-        } else {
-            processProvisioning();
-        }
-    };
-
-    const handleVerifyAndProvision = async () => {
-        if (otpValue !== generatedOTP) { alert("Invalid OTP! Access Denied."); return; }
-        processProvisioning();
-    };
-
-    const processProvisioning = async () => {
-        const allowedPerms = Object.entries(perms).filter(([, v]) => v).map(([k]) => {
-            const [module, action] = k.split('|');
-            return { module, action, allowed: true };
-        });
-        const newEmployee = { ...formData, permissions: allowedPerms, latitude: 20.5937, longitude: 78.9629, status: 'Approved' };
-        const res = await dataService.registerUser(newEmployee, !isAdmin ? currentUser?.username : null);
-        if (res.success) {
-            await dataService.sendEmployeeCredentials(newEmployee.email, newEmployee.name, newEmployee.username, newEmployee.password, isAdmin ? 'ADMIN' : currentUser?.name || 'System', roleLabels[newEmployee.role]);
-            setStatus({ type: 'success', message: 'Employee created & credentials sent via email ✅' });
-            setShowForm(false); setShowOTPModal(false); loadEmployees();
-            setFormData({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', address: '', role: 'NATIONAL_HEADER', territory: '', profilePhoto: '' });
-            setPerms({}); setOtpValue('');
-            setTimeout(() => setStatus(null), 4000);
-        } else alert(res.message || 'Failed to create employee');
-    };
-
-    const handleEdit = (emp) => {
-        setFormData({ ...emp, password: '', confirmPassword: '' });
-        const newPerms = {};
-        if (emp.permissions) emp.permissions.forEach(p => { newPerms[`${p.module}|${p.action}`] = true; });
-        setPerms(newPerms);
-        setShowForm(true); setActiveTab('list');
-    };
-
-    const toggleStatus = async (emp) => {
-        const newStatus = emp.status === 'Approved' ? 'Inactive' : 'Approved';
-        setEmployees(prev => prev.map(e => e.username === emp.username ? { ...e, status: newStatus } : e));
-        setStatus({ type: 'success', message: `${emp.name} marked as ${newStatus}` });
-        setTimeout(() => setStatus(null), 3000);
-    };
-
-    const filtered = employees.filter(e => {
-        // If viewing as employee, show ONLY their own profile
-        if (viewingAsEmployee) {
-            return e.username === (currentUserForEmployee?.username || currentUserForEmployee?.mobile);
-        }
-        const matchRole = filterRole === 'ALL' || e.role === filterRole;
-        const matchSearch = !search || e.name?.toLowerCase().includes(search.toLowerCase()) || e.territory?.toLowerCase().includes(search.toLowerCase());
-        return matchRole && matchSearch;
+  const openEditModal = (emp) => {
+    setEditingEmployee(emp);
+    setFormData({
+      employeeCode: emp.employeeCode || '',
+      username: emp.username || '',
+      fullName: emp.fullName || '',
+      mobile: emp.mobile || '',
+      email: emp.email || '',
+      address: emp.address || '',
+      initialPassword: '',
+      role: emp.role || 'STATE_HEADER',
+      reportingManagerId: emp.reportingManagerId || '',
+      status: emp.status || 'ACTIVE',
     });
 
-    const totalPermsGranted = Object.values(perms).filter(Boolean).length;
+    const states = [];
+    const zones = [];
+    const clusters = [];
+    (emp.scopes || []).forEach((s) => {
+      if (s.cityOrDistrict) {
+        clusters.push({ stateName: s.stateName || '', cityOrDistrict: s.cityOrDistrict });
+      } else if (s.scopeType === 'STATE' && s.stateName) {
+        states.push(s.stateName);
+      } else if (s.scopeType === 'ZONE') {
+        if (s.zoneName) zones.push(s.zoneName);
+        if (s.stateName) states.push(s.stateName);
+      }
+    });
+    setSelectedStates(Array.from(new Set(states)));
+    setSelectedZones(Array.from(new Set(zones)));
+    setCityClusters(clusters);
+    setSelectedPermissions(new Set(emp.permissions || []));
+    setShowFormModal(true);
+  };
 
-    if (availableRoles.length === 0 && !isAdmin) {
-        return <div className="p-8 text-center text-slate-500">You do not have permission to manage employees.</div>;
+  const togglePermission = (code) => {
+    setSelectedPermissions((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  };
+
+  const toggleCategory = (cat) => {
+    const codes = cat.items.map((i) => i.code);
+    const allSelected = codes.every((c) => selectedPermissions.has(c));
+    setSelectedPermissions((prev) => {
+      const next = new Set(prev);
+      codes.forEach((c) => {
+        if (allSelected) next.delete(c);
+        else next.add(c);
+      });
+      return next;
+    });
+  };
+
+  const buildScopesPayload = () => {
+    if (formData.role === 'NATIONAL_HEADER') {
+      return [{ scopeType: 'NATIONAL', stateName: null, zoneName: 'All India', cityOrDistrict: null }];
+    }
+    if (formData.role === 'STATE_HEADER') {
+      return selectedStates.map((st) => ({
+        scopeType: 'STATE',
+        stateName: st,
+        zoneName: null,
+        cityOrDistrict: null,
+      }));
+    }
+    const items = [];
+    selectedZones.forEach((z) => {
+      items.push({ scopeType: 'ZONE', stateName: null, zoneName: z, cityOrDistrict: null });
+    });
+    selectedStates.forEach((st) => {
+      items.push({ scopeType: 'ZONE', stateName: st, zoneName: null, cityOrDistrict: null });
+    });
+    cityClusters.forEach((c) => {
+      items.push({
+        scopeType: 'ZONE',
+        stateName: c.stateName || null,
+        zoneName: null,
+        cityOrDistrict: c.cityOrDistrict,
+      });
+    });
+    return items;
+  };
+
+  const handleSaveEmployee = async (e) => {
+    e.preventDefault();
+    setBanner(null);
+
+    const scopesPayload = buildScopesPayload();
+    if (formData.role === 'STATE_HEADER' && scopesPayload.length === 0) {
+      setBanner({ type: 'error', text: 'Please select at least one assigned state for this State Head.' });
+      return;
+    }
+    if (formData.role === 'REGIONAL_HEADER' && scopesPayload.length === 0) {
+      setBanner({ type: 'error', text: 'Please assign at least one zone, state, or district/city cluster for this Zonal Head.' });
+      return;
     }
 
-    return (
-        <div className="space-y-6 font-['Inter',sans-serif]">
+    setSavingForm(true);
+    try {
+      const permissionsArray = Array.from(selectedPermissions);
+      if (editingEmployee) {
+        await adminEmployeeService.updateEmployee(editingEmployee.id, {
+          fullName: formData.fullName,
+          mobile: formData.mobile,
+          email: formData.email,
+          address: formData.address,
+          reportingManagerId: formData.reportingManagerId || 'ADMIN',
+          scopes: scopesPayload,
+          permissions: permissionsArray,
+        });
+        setBanner({ type: 'success', text: `Updated ${formData.fullName} (${editingEmployee.employeeCode}) and synced permissions.` });
+      } else {
+        if (!formData.initialPassword || formData.initialPassword.length < 6) {
+          setBanner({ type: 'error', text: 'Initial password must be at least 6 characters.' });
+          setSavingForm(false);
+          return;
+        }
+        await adminEmployeeService.createEmployee({
+          employeeCode: formData.employeeCode,
+          username: formData.username,
+          fullName: formData.fullName,
+          mobile: formData.mobile,
+          email: formData.email,
+          address: formData.address,
+          role: formData.role,
+          initialPassword: formData.initialPassword,
+          reportingManagerId: formData.reportingManagerId || null,
+          scopes: scopesPayload,
+          permissions: permissionsArray,
+          status: formData.status,
+        });
+        setBanner({ type: 'success', text: `Provisioned employee ${formData.fullName} (${formData.employeeCode}).` });
+      }
+      setShowFormModal(false);
+      await loadAll();
+    } catch (err) {
+      setBanner({ type: 'error', text: err?.message || 'Unable to save employee.' });
+    } finally {
+      setSavingForm(false);
+    }
+  };
 
-            {/* OTP Modal */}
-            <AnimatePresence>
-                {showOTPModal && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-                        <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-                            className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl">
-                            <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-8 pt-8 pb-6 text-center">
-                                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                    <Shield size={28} className="text-white" />
-                                </div>
-                                <h3 className="text-xl font-black text-white">Email Verification</h3>
-                                <p className="text-indigo-200 text-xs mt-1">OTP sent to {formData.email}</p>
-                            </div>
-                            <div className="p-8">
-                                <input type="text" maxLength="6" value={otpValue}
-                                    onChange={e => setOtpValue(e.target.value)}
-                                    className="w-full text-center text-3xl font-black bg-slate-50 border-2 border-slate-200 rounded-2xl py-4 focus:border-indigo-500 transition-all outline-none tracking-[0.6em]"
-                                    placeholder="••••••" />
-                                <button onClick={handleVerifyAndProvision}
-                                    className="w-full mt-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black py-4 rounded-xl text-sm uppercase tracking-widest shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
-                                    Verify & Provision Account
-                                </button>
-                                <button onClick={() => setShowOTPModal(false)} className="w-full mt-3 text-slate-400 font-bold text-xs uppercase tracking-widest py-2 hover:text-slate-600 transition-colors">
-                                    Cancel
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+  const handleStatusChange = async (emp, nextStatus) => {
+    try {
+      await adminEmployeeService.updateStatus(emp.id, nextStatus, `Changed by Admin to ${nextStatus}`);
+      setBanner({ type: 'success', text: `${emp.fullName} (${emp.employeeCode}) marked ${nextStatus}.` });
+      await loadAll();
+    } catch (err) {
+      setBanner({ type: 'error', text: err?.message || 'Failed to update status.' });
+    }
+  };
 
-            {/* Success toast */}
-            <AnimatePresence>
-                {status && (
-                    <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}
-                        className="flex items-center gap-3 bg-emerald-500 text-white px-5 py-3 rounded-2xl shadow-lg shadow-emerald-500/30">
-                        <CheckCircle2 size={18} />
-                        <span className="text-sm font-bold">{status.message}</span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetTarget || newPasswordInput.length < 6) {
+      setBanner({ type: 'error', text: 'New password must be at least 6 characters.' });
+      return;
+    }
+    try {
+      await adminEmployeeService.resetPassword(resetTarget.id, newPasswordInput);
+      setBanner({ type: 'success', text: `Password updated for ${resetTarget.fullName}; active sessions invalidated.` });
+      setResetTarget(null);
+      setNewPasswordInput('');
+      await loadAll();
+    } catch (err) {
+      setBanner({ type: 'error', text: err?.message || 'Unable to reset password.' });
+    }
+  };
 
-            {/* ── HEADER STATS / MY PROFILE BANNER ── */}
-            {viewingAsEmployee ? (
-                // Employee view: Show a beautiful profile banner
-                <motion.div
-                    initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 flex items-center gap-5 shadow-xl border border-white/10"
-                >
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center text-white text-2xl font-black shadow-lg flex-shrink-0">
-                        {currentUserForEmployee?.name?.charAt(0) || currentUserForEmployee?.username?.charAt(0) || '?'}
-                    </div>
-                    <div className="flex-1">
-                        <p className="text-[10px] font-black text-purple-300 uppercase tracking-widest">My Employee Profile</p>
-                        <h2 className="text-xl font-black text-white mt-0.5">{currentUserForEmployee?.name || currentUserForEmployee?.username}</h2>
-                        <p className="text-[11px] text-slate-400 mt-1 font-semibold">{currentUserForEmployee?.role?.replace(/_/g, ' ')} &bull; {currentUserForEmployee?.territory || 'No Territory'}</p>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">View Only</span>
-                    </div>
-                </motion.div>
-            ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                        { label: 'Total Headers', value: employees.length, icon: Users, color: '#6366f1', bg: 'from-indigo-500 to-indigo-700' },
-                        { label: 'Active', value: employees.filter(e => e.status === 'Approved').length, icon: Zap, color: '#10b981', bg: 'from-emerald-500 to-emerald-700' },
-                        { label: 'Territories', value: new Set(employees.map(e => e.territory)).size, icon: Globe2, color: '#f59e0b', bg: 'from-amber-500 to-amber-700' },
-                        { label: 'Total Users Under', value: '12,480', icon: TrendingUp, color: '#8b5cf6', bg: 'from-violet-500 to-violet-700' },
-                    ].map((stat, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 overflow-hidden relative">
-                            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.bg} flex items-center justify-center shadow-lg flex-shrink-0`}>
-                                <stat.icon size={20} className="text-white" />
-                            </div>
-                            <div>
-                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</div>
-                                <div className="text-2xl font-black text-slate-800">{stat.value}</div>
-                            </div>
-                            <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-5" style={{ background: stat.color }} />
-                        </motion.div>
-                    ))}
-                </div>
-            )}
+  const openPerformanceDetail = async (empId) => {
+    try {
+      const perf = await adminEmployeeService.getEmployeePerformance(empId, { fromDate, toDate });
+      setSelectedPerf(perf);
+    } catch (err) {
+      setBanner({ type: 'error', text: err?.message || 'Unable to load performance metrics.' });
+    }
+  };
 
-            {/* ── TOP BAR ── */}
-            {!viewingAsEmployee && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    {/* Tabs */}
-                    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
-                        {[{ id: 'list', label: '📋 Directory' }, { id: 'map', label: '🗺️ Live Map' }].map(t => (
-                            <button key={t.id} onClick={() => setActiveTab(t.id)}
-                                className={`px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all ${activeTab === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+  const openPermissionPreview = async (empId) => {
+    try {
+      const preview = await adminEmployeeService.getPermissionPreview(empId);
+      setPermPreview(preview);
+    } catch (err) {
+      setBanner({ type: 'error', text: err?.message || 'Unable to load permission preview.' });
+    }
+  };
 
-                    {/* Search + Filter (list only) */}
-                    {!showForm && activeTab === 'list' && (
-                        <div className="flex gap-2 w-full sm:w-auto">
-                            <div className="relative flex-1 sm:w-48">
-                                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
-                                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none focus:border-indigo-400 transition-all" />
-                            </div>
-                            <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
-                                className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 outline-none text-slate-700">
-                                <option value="ALL">All Roles</option>
-                                <option value="NATIONAL_HEADER">National</option>
-                                <option value="STATE_HEADER">State</option>
-                                <option value="REGIONAL_HEADER">Regional</option>
-                            </select>
-                        </div>
-                    )}
+  const filteredEmployees = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return employees.filter((e) => {
+      if (roleFilter !== 'ALL' && e.role !== roleFilter) return false;
+      if (statusFilter !== 'ALL' && e.status !== statusFilter) return false;
+      if (!q) return true;
+      return (
+        String(e.fullName || '').toLowerCase().includes(q) ||
+        String(e.employeeCode || '').toLowerCase().includes(q) ||
+        String(e.username || '').toLowerCase().includes(q) ||
+        String(e.mobile || '').toLowerCase().includes(q) ||
+        String(e.territoryLabel || '').toLowerCase().includes(q)
+      );
+    });
+  }, [employees, search, roleFilter, statusFilter]);
 
-                    {!showForm ? (
-                        <button onClick={() => { setFormData({ username: '', password: '', confirmPassword: '', name: '', mobile: '', email: '', address: '', role: 'NATIONAL_HEADER', territory: '', profilePhoto: '' }); setPerms({}); setShowForm(true); }}
-                            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-105 transition-all whitespace-nowrap">
-                            <Plus size={16} /> Add Header User
-                        </button>
-                    ) : (
-                        <button onClick={() => setShowForm(false)}
-                            className="flex items-center gap-2 bg-slate-100 text-slate-600 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide hover:bg-slate-200 transition-all">
-                            <X size={16} /> Cancel
-                        </button>
-                    )}
-                </div>
-            )}
+  const filteredPerf = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return performanceList.filter((e) => {
+      if (roleFilter !== 'ALL' && e.role !== roleFilter) return false;
+      if (statusFilter !== 'ALL' && e.status !== statusFilter) return false;
+      if (!q) return true;
+      return (
+        String(e.fullName || '').toLowerCase().includes(q) ||
+        String(e.employeeCode || '').toLowerCase().includes(q) ||
+        String(e.territoryLabel || '').toLowerCase().includes(q)
+      );
+    });
+  }, [performanceList, search, roleFilter, statusFilter]);
 
-            {/* ── FORM ── */}
-            <AnimatePresence>
-                {showForm && (
-                    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
-                        className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+  const summaryKpis = useMemo(() => {
+    const active = employees.filter((e) => e.status === 'ACTIVE').length;
+    const nh = employees.filter((e) => e.role === 'NATIONAL_HEADER').length;
+    const sh = employees.filter((e) => e.role === 'STATE_HEADER').length;
+    const zh = employees.filter((e) => e.role === 'REGIONAL_HEADER').length;
+    const totalOnboarded = performanceList.reduce((acc, p) => acc + Number(p.directUsersOnboarded || 0), 0);
+    return { total: employees.length, active, nh, sh, zh, totalOnboarded };
+  }, [employees, performanceList]);
 
-                        {/* Form header */}
-                        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
-                                <Shield className="text-indigo-400" size={22} />
-                            </div>
-                            <div>
-                                <h2 className="text-base font-black uppercase tracking-widest">Create Header Control Account</h2>
-                                <p className="text-xs text-slate-400 mt-0.5">Configure credentials, territory & access permissions</p>
-                            </div>
-                            <div className="ml-auto flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl">
-                                <Lock size={11} className="text-indigo-400" />
-                                <span className="text-[10px] text-indigo-300 font-black uppercase tracking-widest">Secure Form</span>
-                            </div>
-                        </div>
+  const filteredStateChoices = useMemo(() => {
+    const q = stateSearch.trim().toLowerCase();
+    return (zoneCatalog.allStates || []).filter((s) => !q || s.toLowerCase().includes(q));
+  }, [zoneCatalog.allStates, stateSearch]);
 
-                        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-8">
-
-                            {/* Grid: Credentials + Identity */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Credentials */}
-                                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
-                                        <Lock size={12} /> Credentials
-                                    </h3>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">Username / Login ID *</label>
-                                        <input required type="text" value={formData.username}
-                                            onChange={e => setFormData({ ...formData, username: e.target.value })}
-                                            disabled={employees.some(emp => emp.username === formData.username)}
-                                            className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-400 outline-none transition-all disabled:opacity-50" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">Password *</label>
-                                            <input type="password" value={formData.password}
-                                                required={!employees.some(emp => emp.username === formData.username)}
-                                                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                                placeholder={employees.some(emp => emp.username === formData.username) ? "Leave blank" : ""}
-                                                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-400 outline-none transition-all" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">Confirm *</label>
-                                            <input type="password" value={formData.confirmPassword}
-                                                required={!employees.some(emp => emp.username === formData.username) && formData.password !== ''}
-                                                onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                                placeholder={employees.some(emp => emp.username === formData.username) ? "Leave blank" : ""}
-                                                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-400 outline-none transition-all" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Identity */}
-                                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-2">
-                                        <UserCheck size={12} /> Personal Identity
-                                    </h3>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">Full Name *</label>
-                                        <input required type="text" value={formData.name}
-                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                            className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-emerald-400 outline-none transition-all" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 flex items-center gap-1"><Phone size={9} /> Mobile *</label>
-                                            <input required type="tel" value={formData.mobile}
-                                                onChange={e => setFormData({ ...formData, mobile: e.target.value })}
-                                                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-emerald-400 outline-none transition-all" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 flex items-center gap-1"><Mail size={9} /> Email *</label>
-                                            <input required type="email" value={formData.email}
-                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                                className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-emerald-400 outline-none transition-all" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 flex items-center gap-1"><Building2 size={9} /> Address</label>
-                                        <input type="text" value={formData.address}
-                                            onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                            className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-emerald-400 outline-none transition-all" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Hierarchy */}
-                            <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 rounded-2xl border border-indigo-100 p-5">
-                                <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-700 mb-4 flex items-center gap-2">
-                                    <MapPin size={12} className="text-indigo-500" /> Hierarchy & Territory Assignment
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">Assigned Role *</label>
-                                        <select required value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}
-                                            className="w-full bg-white border-2 border-indigo-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all">
-                                            {availableRoles.map(r => <option key={r} value={r}>{roleLabels[r]}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5">Territory *</label>
-                                        <input required type="text" value={formData.territory}
-                                            onChange={e => setFormData({ ...formData, territory: e.target.value })}
-                                            placeholder="e.g. Maharashtra, Delhi..."
-                                            className="w-full bg-white border-2 border-indigo-200 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all" />
-                                        <p className="text-[9px] text-indigo-500 mt-1 font-bold">⚠️ Bounds user data visibility</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Permissions Matrix */}
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
-                                        <Shield size={16} className="text-rose-500" /> Permissions Matrix
-                                    </h3>
-                                    <span className="bg-indigo-50 text-indigo-600 border border-indigo-200 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wide">
-                                        {totalPermsGranted} Granted
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {PERMISSIONS_MATRIX.map((cat, idx) => {
-                                        const isExpanded = expandedPerms[cat.category];
-                                        const allChecked = cat.items.every(i => perms[`${cat.category}|${i}`]);
-                                        const someChecked = cat.items.some(i => perms[`${cat.category}|${i}`]);
-                                        return (
-                                            <div key={idx} className="bg-white rounded-2xl border-2 border-slate-100 overflow-hidden hover:border-slate-200 transition-all">
-                                                <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
-                                                    onClick={() => setExpandedPerms(p => ({ ...p, [cat.category]: !isExpanded }))}
-                                                    style={{ borderLeft: `3px solid ${cat.color}` }}>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-base">{cat.icon}</span>
-                                                        <div>
-                                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">{cat.category}</p>
-                                                            <p className="text-[9px] text-slate-400">{cat.items.filter(i => perms[`${cat.category}|${i}`]).length}/{cat.items.length} enabled</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={`w-2 h-2 rounded-full ${allChecked ? 'bg-emerald-400' : someChecked ? 'bg-amber-400' : 'bg-slate-200'}`} />
-                                                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                                    </div>
-                                                </div>
-                                                <AnimatePresence>
-                                                    {isExpanded && (
-                                                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                                                            <div className="px-4 pb-4 pt-1 border-t border-slate-100 space-y-2.5">
-                                                                <label className="flex items-center gap-2 cursor-pointer pb-2 border-b border-slate-100">
-                                                                    <input type="checkbox" className="w-3.5 h-3.5 rounded accent-indigo-600"
-                                                                        checked={allChecked}
-                                                                        onChange={e => handleCheckAll(cat.category, e.target.checked)} />
-                                                                    <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Enable All</span>
-                                                                </label>
-                                                                {cat.items.map((item, ii) => (
-                                                                    <label key={ii} className="flex items-center gap-2.5 cursor-pointer group">
-                                                                        <input type="checkbox" className="w-3.5 h-3.5 rounded accent-indigo-600"
-                                                                            checked={!!perms[`${cat.category}|${item}`]}
-                                                                            onChange={e => handlePermChange(cat.category, item, e.target.checked)} />
-                                                                        <span className="text-[11px] font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{item}</span>
-                                                                    </label>
-                                                                ))}
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Submit */}
-                            <div className="flex justify-end pt-4 border-t border-slate-100">
-                                <button disabled={isVerifying} type="submit"
-                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-10 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2">
-                                    {isVerifying ? <><RefreshCcw size={16} className="animate-spin" /> Sending OTP...</> : <><Save size={16} /> Provision Account</>}
-                                </button>
-                            </div>
-                        </form>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* ── DIRECTORY ── */}
-            {!showForm && activeTab === 'list' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    {filtered.length === 0 && (
-                        <div className="col-span-2 text-center py-16 text-slate-400">
-                            <Users size={40} className="mx-auto mb-3 opacity-30" />
-                            <p className="font-bold text-sm">No employees found</p>
-                        </div>
-                    )}
-                    {filtered.map((emp, i) => {
-                        const rc = ROLE_CONFIG[emp.role] || ROLE_CONFIG.NATIONAL_HEADER;
-                        const isActive = emp.status === 'Approved';
-                        return (
-                            <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                                className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden group">
-                                {/* Card top */}
-                                <div className="p-5 flex gap-4">
-                                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${rc.bg} flex items-center justify-center text-white shadow-lg flex-shrink-0 relative`}>
-                                        <span className="text-2xl font-black">{emp.name?.charAt(0) || '?'}</span>
-                                        <span className="absolute -bottom-1.5 -right-1.5 text-base">{rc.rank}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <h3 className="text-base font-black text-slate-800 truncate">{emp.name}</h3>
-                                            <span className={`shrink-0 flex items-center gap-1 px-2.5 py-1 text-[9px] font-black uppercase rounded-full border ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                                                {isActive ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </div>
-                                        <div className={`inline-flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-wide ${rc.light}`}>
-                                            <Star size={8} /> {rc.label}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 mt-2 text-[11px] text-slate-500 font-semibold">
-                                            <MapPin size={10} className="text-slate-400 shrink-0" />
-                                            <span className="truncate">{emp.territory}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Contact strip */}
-                                <div className="px-5 pb-3 flex flex-wrap gap-x-4 gap-y-1">
-                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-semibold">
-                                        <Mail size={10} /> <span className="truncate max-w-[140px]">{emp.email}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-semibold">
-                                        <Phone size={10} /> {emp.mobile}
-                                    </div>
-                                </div>
-
-                                {/* Stats */}
-                                <div className="grid grid-cols-3 bg-slate-50/80 border-t border-slate-100 divide-x divide-slate-100">
-                                    {[
-                                        { label: 'Users', value: '1,240', color: '#6366f1' },
-                                        { label: 'Vol/Month', value: '₹4.2Cr', color: '#10b981' },
-                                        { label: 'Modules', value: `${emp.permissions?.length || 0}`, color: '#f59e0b' },
-                                    ].map((s, si) => (
-                                        <div key={si} className="p-3 text-center">
-                                            <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{s.label}</div>
-                                            <div className="text-sm font-black" style={{ color: s.color }}>{s.value}</div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Actions */}
-                                <div className="px-4 py-3 bg-white border-t border-slate-100 flex justify-between items-center">
-                                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
-                                        <Activity size={11} className={isActive ? 'text-emerald-500' : 'text-slate-300'} />
-                                        {isActive ? 'Live • Just now' : 'Offline'}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {isAdmin && (
-                                            <button onClick={() => toggleStatus(emp)}
-                                                className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-lg border transition-all ${isActive ? 'border-rose-200 text-rose-500 hover:bg-rose-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}`}>
-                                                {isActive ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
-                                                {isActive ? 'Deactivate' : 'Activate'}
-                                            </button>
-                                        )}
-                                        <button onClick={() => { if (isAdmin) handleEdit(emp); }}
-                                            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide text-indigo-600 px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-all">
-                                            <Eye size={12} /> {isAdmin ? 'Edit' : 'View'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* ── MAP ── */}
-            {!showForm && activeTab === 'map' && (
-                <div className="bg-slate-100 rounded-3xl overflow-hidden border border-slate-200 shadow-xl" style={{ height: 580 }}>
-                    <div className="absolute z-[400] top-4 left-4">
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-4 w-56">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 mb-3 flex items-center gap-2">
-                                <Activity size={12} className="text-emerald-500" /> Header Pulse Map
-                            </h3>
-                            <div className="space-y-2">
-                                {Object.entries(ROLE_CONFIG).map(([key, rc]) => (
-                                    <div key={key} className="flex items-center gap-2.5">
-                                        <div className={`w-3 h-3 rounded-full ${rc.dot}`} />
-                                        <span className="text-[10px] font-bold text-slate-600">{rc.label}</span>
-                                        <span className="ml-auto text-[10px] font-black text-slate-800">{employees.filter(e => e.role === key).length}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%' }}>
-                        <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution="© CartoDB" />
-                        {employees.map((emp, i) => emp.latitude && emp.longitude && (
-                            <Marker key={i} position={[emp.latitude, emp.longitude]} icon={icons[emp.role] || icons['ADMIN']}>
-                                <Popup>
-                                    <div className="text-center p-1">
-                                        <div className="font-black text-sm text-slate-800">{emp.name}</div>
-                                        <div className="text-[9px] font-bold uppercase text-slate-500">{roleLabels[emp.role]}</div>
-                                        <div className="inline-block mt-1.5 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] font-black rounded-lg">{emp.territory}</div>
-                                        <div className="text-[9px] text-emerald-500 mt-1.5 font-bold flex items-center justify-center gap-1">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" /> Active
-                                        </div>
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        ))}
-                    </MapContainer>
-                </div>
-            )}
+  return (
+    <div className="space-y-6 text-slate-900 font-['Inter',sans-serif]">
+      {/* Header Bar */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2.5">
+            <Shield className="w-5 h-5 text-indigo-600" />
+            Employee Management, Hierarchy &amp; Performance
+          </h2>
+          <p className="text-xs text-slate-600 mt-1">
+            Provision National Head, State Head, and Zonal Head credentials, enforce role-bound geographical scopes, configure permissions, and monitor live DB performance.
+          </p>
         </div>
-    );
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={loadAll}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 cursor-pointer"
+          >
+            <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Create Employee
+          </button>
+        </div>
+      </div>
+
+      {banner && (
+        <div
+          className={`p-3.5 rounded-xl border text-sm flex items-center justify-between gap-3 ${
+            banner.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-800'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {banner.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
+            <span>{banner.text}</span>
+          </div>
+          <button onClick={() => setBanner(null)} className="p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Real DB Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Employees</div>
+          <div className="text-2xl font-extrabold text-slate-900 mt-1">{summaryKpis.total}</div>
+          <div className="text-xs text-slate-600 mt-1">
+            {summaryKpis.nh} National · {summaryKpis.sh} State · {summaryKpis.zh} Zonal
+          </div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Active Accounts</div>
+          <div className="text-2xl font-extrabold text-emerald-700 mt-1">{summaryKpis.active}</div>
+          <div className="text-xs text-slate-600 mt-1">Verified &amp; permitted to sign in</div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Users Onboarded</div>
+          <div className="text-2xl font-extrabold text-indigo-700 mt-1">{summaryKpis.totalOnboarded}</div>
+          <div className="text-xs text-slate-600 mt-1">Direct partner accounts created</div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Audit Events Recorded</div>
+          <div className="text-2xl font-extrabold text-slate-900 mt-1">{auditLogs.length}</div>
+          <div className="text-xs text-slate-600 mt-1">Logins, permission updates &amp; onboarding</div>
+        </div>
+      </div>
+
+      {/* Tabs + Filters */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'directory', label: 'Employee Directory', icon: Users },
+            { id: 'performance', label: 'Employee Performance', icon: BarChart3 },
+            { id: 'audit', label: 'Activity Audit Logs', icon: History },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, ID, scope..."
+              className="pl-9 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
+            />
+          </div>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
+          >
+            <option value="ALL">All Roles</option>
+            <option value="NATIONAL_HEADER">National Head</option>
+            <option value="STATE_HEADER">State Head</option>
+            <option value="REGIONAL_HEADER">Zonal Head</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="SUSPENDED">Suspended</option>
+          </select>
+          {activeTab === 'performance' && (
+            <>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
+              />
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
+              />
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* DIRECTORY TAB */}
+      {activeTab === 'directory' && (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          {filteredEmployees.length === 0 ? (
+            <div className="p-12 text-center text-sm text-slate-500">
+              No employees found. Click <strong>Create Employee</strong> to provision National, State, or Zonal Head credentials.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
+                    <th className="py-3.5 px-4">Employee</th>
+                    <th className="py-3.5 px-4">Role &amp; Manager</th>
+                    <th className="py-3.5 px-4">Geographical Scope</th>
+                    <th className="py-3.5 px-4">Permissions</th>
+                    <th className="py-3.5 px-4">Status &amp; Login</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredEmployees.map((emp) => {
+                    const roleMeta = ROLE_META[emp.role] || { label: emp.role, badge: 'bg-slate-100 text-slate-800 border-slate-200' };
+                    return (
+                      <tr key={emp.id} className="hover:bg-slate-50/70">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900">{emp.fullName}</div>
+                          <div className="text-xs font-mono text-indigo-700 font-semibold">{emp.employeeCode} · @{emp.username}</div>
+                          <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1"><Phone className="w-3 h-3" /> {emp.mobile}</span>
+                            <span className="inline-flex items-center gap-1"><Mail className="w-3 h-3" /> {emp.email}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold border ${roleMeta.badge}`}>
+                            {roleMeta.label}
+                          </span>
+                          <div className="text-xs text-slate-600 mt-1">
+                            Reports to: <span className="font-semibold">{emp.reportingManagerName || 'Admin'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-xs text-slate-700 max-w-xs">
+                          <div className="inline-flex items-start gap-1 font-semibold">
+                            <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                            <span>{emp.territoryLabel || 'Unassigned'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-xs">
+                          <span className="font-bold text-slate-800">{(emp.permissions || []).length}</span> granted
+                          <div>
+                            <button
+                              onClick={() => openPermissionPreview(emp.id)}
+                              className="text-[11px] font-bold text-indigo-600 hover:underline mt-0.5 cursor-pointer"
+                            >
+                              Preview Access
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold border ${STATUS_BADGE[emp.status] || STATUS_BADGE.INACTIVE}`}>
+                            {emp.status}
+                          </span>
+                          <div className="text-[11px] text-slate-500 mt-1">Last login: {formatDateTime(emp.lastLoginAt)}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="inline-flex flex-wrap justify-end gap-1.5">
+                            <button
+                              onClick={() => openEditModal(emp)}
+                              className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold cursor-pointer"
+                            >
+                              Edit / Perms
+                            </button>
+                            <button
+                              onClick={() => openPerformanceDetail(emp.id)}
+                              className="px-2.5 py-1 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold cursor-pointer"
+                            >
+                              Performance
+                            </button>
+                            <button
+                              onClick={() => { setResetTarget(emp); setNewPasswordInput(''); }}
+                              className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold cursor-pointer"
+                              title="Reset Password"
+                            >
+                              <KeyRound className="w-3.5 h-3.5 inline" />
+                            </button>
+                            {emp.status === 'ACTIVE' ? (
+                              <button
+                                onClick={() => handleStatusChange(emp, 'SUSPENDED')}
+                                className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold cursor-pointer"
+                              >
+                                Suspend
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleStatusChange(emp, 'ACTIVE')}
+                                className="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold cursor-pointer"
+                              >
+                                Activate
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PERFORMANCE MONITORING TAB */}
+      {activeTab === 'performance' && (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          {filteredPerf.length === 0 ? (
+            <div className="p-12 text-center text-sm text-slate-500">No employee performance records found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
+                    <th className="py-3.5 px-4">Employee</th>
+                    <th className="py-3.5 px-4">Role &amp; Scope</th>
+                    <th className="py-3.5 px-4">Onboarded (R / D / SD)</th>
+                    <th className="py-3.5 px-4">Hierarchy Users</th>
+                    <th className="py-3.5 px-4">Transactions (S / P / F)</th>
+                    <th className="py-3.5 px-4 text-right">Volume</th>
+                    <th className="py-3.5 px-4 text-right">Inspect</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredPerf.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50/70">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900">{p.fullName}</div>
+                        <div className="text-xs font-mono text-indigo-700">{p.employeeCode}</div>
+                        <span className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_BADGE[p.status]}`}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs">
+                        <div className="font-bold text-slate-900">{p.roleDisplayName}</div>
+                        <div className="text-slate-600 max-w-xs truncate">{p.territoryLabel}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs">
+                        <div className="font-extrabold text-slate-900">{p.directUsersOnboarded} total</div>
+                        <div className="text-slate-600">
+                          {p.retailersOnboarded}R · {p.distributorsOnboarded}D · {p.superDistributorsOnboarded}SD
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs">
+                        <div className="font-bold text-slate-900">{p.hierarchyTotalUsers} users</div>
+                        <div className="text-slate-500">{p.subordinateEmployeesCount} subordinate staff</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs">
+                        <div className="font-bold text-slate-900">{p.totalTransactions} txns</div>
+                        <div className="text-slate-600">
+                          <span className="text-emerald-700 font-semibold">{p.successTransactions}</span> /{' '}
+                          <span className="text-amber-700 font-semibold">{p.pendingTransactions}</span> /{' '}
+                          <span className="text-rose-700 font-semibold">{p.failedTransactions}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-extrabold text-slate-900">{formatINR(p.totalVolume)}</td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => openPerformanceDetail(p.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer"
+                        >
+                          Details <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AUDIT LOGS TAB */}
+      {activeTab === 'audit' && (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          {auditLogs.length === 0 ? (
+            <div className="p-12 text-center text-sm text-slate-500">No audit logs recorded yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 font-bold uppercase text-slate-600">
+                    <th className="py-3 px-4">Timestamp</th>
+                    <th className="py-3 px-4">Event</th>
+                    <th className="py-3 px-4">Employee</th>
+                    <th className="py-3 px-4">Actor</th>
+                    <th className="py-3 px-4">Outcome</th>
+                    <th className="py-3 px-4">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {auditLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/70">
+                      <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">{formatDateTime(log.createdAt)}</td>
+                      <td className="py-2.5 px-4 font-bold text-slate-900">{log.eventType}</td>
+                      <td className="py-2.5 px-4 font-mono text-indigo-700">{log.employeeUsername || '—'}</td>
+                      <td className="py-2.5 px-4">{log.actorType}: {log.actorUsername || '—'}</td>
+                      <td className="py-2.5 px-4 font-bold">{log.outcome}</td>
+                      <td className="py-2.5 px-4 text-slate-700 max-w-md">{log.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CREATE / EDIT EMPLOYEE & PERMISSION MATRIX MODAL */}
+      {showFormModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">
+                  {editingEmployee ? `Edit Employee · ${editingEmployee.employeeCode}` : 'Create Employee Account'}
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Admin-only provisioning. Passwords are BCrypt hashed and never returned.
+                </p>
+              </div>
+              <button onClick={() => setShowFormModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEmployee} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Employee ID *</label>
+                  <input
+                    type="text"
+                    value={formData.employeeCode}
+                    disabled={!!editingEmployee}
+                    onChange={(e) => setFormData((p) => ({ ...p, employeeCode: e.target.value.toUpperCase() }))}
+                    placeholder="EMP-NH-001"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white disabled:bg-slate-100 text-sm font-mono"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Username *</label>
+                  <input
+                    type="text"
+                    value={formData.username}
+                    disabled={!!editingEmployee}
+                    onChange={(e) => setFormData((p) => ({ ...p, username: e.target.value }))}
+                    placeholder="Login username"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white disabled:bg-slate-100 text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData((p) => ({ ...p, fullName: e.target.value }))}
+                    placeholder="Employee full name"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Mobile *</label>
+                  <input
+                    type="tel"
+                    value={formData.mobile}
+                    onChange={(e) => setFormData((p) => ({ ...p, mobile: e.target.value }))}
+                    placeholder="10-digit mobile"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                    placeholder="employee@rupiksha.in"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm"
+                    required
+                  />
+                </div>
+                {!editingEmployee && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Initial Password *</label>
+                    <input
+                      type="password"
+                      value={formData.initialPassword}
+                      onChange={(e) => setFormData((p) => ({ ...p, initialPassword: e.target.value }))}
+                      placeholder="Min 6 characters"
+                      minLength={6}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm"
+                      required
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Employee Role *</label>
+                  <select
+                    value={formData.role}
+                    disabled={!!editingEmployee}
+                    onChange={(e) => {
+                      setFormData((p) => ({ ...p, role: e.target.value, reportingManagerId: '' }));
+                      setSelectedStates([]);
+                      setSelectedZones([]);
+                      setCityClusters([]);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white disabled:bg-slate-100 text-sm font-semibold"
+                  >
+                    <option value="NATIONAL_HEADER">National Head</option>
+                    <option value="STATE_HEADER">State Head</option>
+                    <option value="REGIONAL_HEADER">Zonal Head</option>
+                  </select>
+                </div>
+
+                {formData.role !== 'NATIONAL_HEADER' && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Reporting Manager</label>
+                    <select
+                      value={formData.reportingManagerId}
+                      onChange={(e) => setFormData((p) => ({ ...p, reportingManagerId: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm"
+                    >
+                      <option value="">Direct to Admin</option>
+                      {eligibleManagers
+                        .filter((m) => !editingEmployee || m.id !== editingEmployee.id)
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.fullName} ({m.employeeCode} · {m.roleDisplayName})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">Office Address</label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
+                    placeholder="City / office address"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* GEOGRAPHICAL SCOPE CONFIGURATION */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900">Assigned Geographical Scope</h4>
+                    <p className="text-xs text-slate-600">{ROLE_META[formData.role]?.desc}</p>
+                  </div>
+                </div>
+
+                {formData.role === 'NATIONAL_HEADER' && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900">
+                    All India (National Scope across all states &amp; zones)
+                  </div>
+                )}
+
+                {formData.role === 'REGIONAL_HEADER' && (
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold uppercase text-slate-700">1. Assign Standard Zones</div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(zoneCatalog.zoneToStates || {}).map((zone) => {
+                        const checked = selectedZones.includes(zone);
+                        return (
+                          <button
+                            type="button"
+                            key={zone}
+                            onClick={() =>
+                              setSelectedZones((prev) =>
+                                checked ? prev.filter((z) => z !== zone) : [...prev, zone]
+                              )
+                            }
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                              checked
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                            }`}
+                          >
+                            {zone}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 space-y-2">
+                      <div className="text-xs font-bold uppercase text-slate-700">2. Or Add Specific City / District Cluster (Optional)</div>
+                      <div className="flex flex-wrap gap-2">
+                        <select
+                          value={clusterDraft.stateName}
+                          onChange={(e) => setClusterDraft((p) => ({ ...p, stateName: e.target.value }))}
+                          className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs"
+                        >
+                          <option value="">Any State</option>
+                          {(zoneCatalog.allStates || []).map((st) => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          value={clusterDraft.cityOrDistrict}
+                          onChange={(e) => setClusterDraft((p) => ({ ...p, cityOrDistrict: e.target.value }))}
+                          placeholder="City or District name (e.g. Patna)"
+                          className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs min-w-[210px]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!clusterDraft.cityOrDistrict.trim()) return;
+                            setCityClusters((prev) => [...prev, { ...clusterDraft, cityOrDistrict: clusterDraft.cityOrDistrict.trim() }]);
+                            setClusterDraft({ stateName: '', cityOrDistrict: '' });
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer"
+                        >
+                          + Add Cluster
+                        </button>
+                      </div>
+                      {cityClusters.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {cityClusters.map((c, idx) => (
+                            <span
+                              key={`${c.cityOrDistrict}-${idx}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-xs font-semibold"
+                            >
+                              {c.cityOrDistrict}{c.stateName ? `, ${c.stateName}` : ''}
+                              <button
+                                type="button"
+                                onClick={() => setCityClusters((prev) => prev.filter((_, i) => i !== idx))}
+                                className="text-rose-600"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(formData.role === 'STATE_HEADER' || formData.role === 'REGIONAL_HEADER') && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold uppercase text-slate-700">
+                        {formData.role === 'STATE_HEADER' ? 'Select Assigned States *' : 'Additional Specific States (Optional)'}
+                      </span>
+                      <input
+                        type="text"
+                        value={stateSearch}
+                        onChange={(e) => setStateSearch(e.target.value)}
+                        placeholder="Filter states..."
+                        className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-xs"
+                      />
+                    </div>
+                    <div className="max-h-44 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-2 bg-white border border-slate-200 rounded-xl">
+                      {filteredStateChoices.map((st) => {
+                        const checked = selectedStates.includes(st);
+                        return (
+                          <label key={st} className="flex items-center gap-2 text-xs text-slate-800 cursor-pointer py-0.5">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                setSelectedStates((prev) =>
+                                  checked ? prev.filter((x) => x !== st) : [...prev, st]
+                                )
+                              }
+                            />
+                            <span className="truncate">{st}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PERMISSION MATRIX */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900">Employee Permission Matrix</h4>
+                    <p className="text-xs text-slate-600">
+                      Read-only operational visibility plus optional controlled onboarding. Wallet, commission, settings, KYC approvals &amp; user modification remain locked.
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold">
+                    {selectedPermissions.size} GRANTED
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {permCatalog.map((cat) => {
+                    const allChecked = cat.items.every((i) => selectedPermissions.has(i.code));
+                    return (
+                      <div key={cat.category} className="border border-slate-200 rounded-2xl p-4 bg-white">
+                        <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100">
+                          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+                            {cat.categoryLabel}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleCategory(cat)}
+                            className="text-[11px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                          >
+                            {allChecked ? 'Clear All' : 'Enable All'}
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {cat.items.map((item) => {
+                            const checked = selectedPermissions.has(item.code);
+                            return (
+                              <label key={item.code} className="flex items-start gap-2.5 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5"
+                                  checked={checked}
+                                  onChange={() => togglePermission(item.code)}
+                                />
+                                <div>
+                                  <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                                    <span>{item.label}</span>
+                                    {item.onboardingWrite && (
+                                      <span className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-800">
+                                        Onboarding Write
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500">{item.description}</div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowFormModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingForm}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold shadow-sm cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingForm ? 'Saving...' : editingEmployee ? 'Save Employee Changes' : 'Provision Employee Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EMPLOYEE PERFORMANCE INSPECTOR MODAL */}
+      {selectedPerf && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-extrabold text-slate-900">{selectedPerf.fullName}</h3>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-800">{selectedPerf.employeeCode}</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${STATUS_BADGE[selectedPerf.status]}`}>
+                    {selectedPerf.status}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  {selectedPerf.roleDisplayName} · Scope: {selectedPerf.territoryLabel} · Reports to: {selectedPerf.reportingManagerName || 'Admin'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => openPermissionPreview(selectedPerf.id)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold cursor-pointer"
+                >
+                  Permission Preview
+                </button>
+                <button onClick={() => setSelectedPerf(null)} className="p-1.5 rounded-lg hover:bg-slate-100">
+                  <X className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="text-xs font-bold text-slate-500 uppercase">Direct Onboarded Users</div>
+                <div className="text-2xl font-extrabold text-slate-900 mt-1">{selectedPerf.directUsersOnboarded}</div>
+                <div className="text-xs text-slate-600 mt-1">
+                  {selectedPerf.retailersOnboarded} R · {selectedPerf.distributorsOnboarded} D · {selectedPerf.superDistributorsOnboarded} SD
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="text-xs font-bold text-slate-500 uppercase">Hierarchy Total Users</div>
+                <div className="text-2xl font-extrabold text-slate-900 mt-1">{selectedPerf.hierarchyTotalUsers}</div>
+                <div className="text-xs text-slate-600 mt-1">
+                  {selectedPerf.hierarchyRetailers} R · {selectedPerf.hierarchyDistributors} D · {selectedPerf.hierarchySuperDistributors} SD
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="text-xs font-bold text-slate-500 uppercase">Hierarchy Transactions</div>
+                <div className="text-2xl font-extrabold text-slate-900 mt-1">{selectedPerf.totalTransactions}</div>
+                <div className="text-xs text-slate-600 mt-1">
+                  Success: {selectedPerf.successTransactions} · Pending: {selectedPerf.pendingTransactions} · Failed: {selectedPerf.failedTransactions}
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="text-xs font-bold text-slate-500 uppercase">Total Transaction Volume</div>
+                <div className="text-2xl font-extrabold text-indigo-700 mt-1">{formatINR(selectedPerf.totalVolume)}</div>
+                <div className="text-xs text-slate-600 mt-1">Subordinate employees: {selectedPerf.subordinateEmployeesCount}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="border border-slate-200 rounded-2xl p-4">
+                <h4 className="text-sm font-extrabold text-slate-900 mb-3">Service-Wise Breakdown</h4>
+                {selectedPerf.serviceBreakdown?.length > 0 ? (
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={selectedPerf.serviceBreakdown}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="service" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Bar dataKey="totalCount" name="Txns" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 py-8 text-center">No transactions recorded in this employee&apos;s hierarchy.</p>
+                )}
+              </div>
+
+              <div className="border border-slate-200 rounded-2xl p-4">
+                <h4 className="text-sm font-extrabold text-slate-900 mb-3">Date-Wise Performance</h4>
+                {selectedPerf.dailyPerformance?.length > 0 ? (
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={selectedPerf.dailyPerformance}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="totalVolume" name="Volume" stroke="#4f46e5" fill="#e0e7ff" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 py-8 text-center">No date-wise metrics recorded yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* READ-ONLY PERMISSION PREVIEW MODAL */}
+      {permPreview && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full max-h-[88vh] overflow-y-auto p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Read-Only Permission Preview · {permPreview.employee?.fullName}
+                </h3>
+                <p className="text-xs text-slate-600">
+                  {permPreview.employee?.employeeCode} ({permPreview.employee?.roleDisplayName}) — Preview only; Admin does not impersonate employee sessions.
+                </p>
+              </div>
+              <button onClick={() => setPermPreview(null)} className="p-1.5 rounded-lg hover:bg-slate-100">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(permPreview.matrix || []).map((cat) => (
+                <div key={cat.category} className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+                  <div className="text-xs font-extrabold uppercase text-slate-800 mb-2">{cat.categoryLabel}</div>
+                  <div className="space-y-1.5">
+                    {(cat.items || []).map((it) => (
+                      <div key={it.code} className="flex items-center justify-between text-xs">
+                        <span className={it.allowed ? 'font-semibold text-slate-900' : 'text-slate-400'}>{it.label}</span>
+                        <span className={`font-bold ${it.allowed ? 'text-emerald-700' : 'text-slate-400'}`}>
+                          {it.allowed ? 'ALLOWED' : 'DENIED'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESET PASSWORD MODAL */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="text-base font-extrabold text-slate-900">Reset Employee Password</h3>
+              <button onClick={() => setResetTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100">
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600">
+              Setting a new password for <strong>{resetTarget.fullName}</strong> ({resetTarget.employeeCode}) immediately invalidates active sessions.
+            </p>
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+              <input
+                type="password"
+                value={newPasswordInput}
+                onChange={(e) => setNewPasswordInput(e.target.value)}
+                placeholder="Enter new password (min 6 chars)"
+                minLength={6}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                required
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setResetTarget(null)} className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold">
+                  Cancel
+                </button>
+                <button type="submit" className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold cursor-pointer">
+                  Update Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1,7 +1,10 @@
 package com.rupiksha.backend.security;
 
 import com.rupiksha.backend.domain.AdminAuthAuditEventType;
+import com.rupiksha.backend.domain.Employee;
+import com.rupiksha.backend.domain.EmployeeStatus;
 import com.rupiksha.backend.domain.User;
+import com.rupiksha.backend.repository.EmployeeRepository;
 import com.rupiksha.backend.repository.UserRepository;
 import com.rupiksha.backend.service.AdminAuditService;
 import io.jsonwebtoken.Claims;
@@ -11,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +32,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AdminAuditService adminAuditService;
+    private EmployeeRepository employeeRepository;
+
+    @Autowired(required = false)
+    public void setEmployeeRepository(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -42,8 +52,48 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = auth.substring(7).trim();
             Claims claims = jwtService.parse(token);
             String subject = claims.getSubject();
+            String principalType = claims.get("principal_type", String.class);
             @SuppressWarnings("unchecked")
             List<String> roles = claims.get("roles", List.class);
+
+            if ("EMPLOYEE".equalsIgnoreCase(principalType)) {
+                UUID empId = tryParseUuid(subject);
+                Object verObj = claims.get("employee_session_version");
+                Integer tokenVersion = (verObj instanceof Number n) ? n.intValue() : null;
+                if (empId == null || tokenVersion == null || employeeRepository == null) {
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                Employee employee = employeeRepository.findById(empId).orElse(null);
+                if (employee == null
+                        || employee.getStatus() != EmployeeStatus.ACTIVE
+                        || employee.getSessionVersion() == null
+                        || !employee.getSessionVersion().equals(tokenVersion)) {
+                    log.warn("Blocked inactive/suspended/revoked employee token for {}", subject);
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                List<String> empRoles = List.of("EMPLOYEE", employee.getEmployeeRole().name());
+                var authorities = empRoles.stream().map(r -> new SimpleGrantedAuthority("ROLE_" + r)).toList();
+                var principal = new JwtPrincipal(subject, employee.getUsername(), empRoles);
+                var authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            boolean claimsEmployeeRole = roles != null && roles.stream()
+                    .anyMatch(r -> "EMPLOYEE".equalsIgnoreCase(r)
+                            || "NATIONAL_HEADER".equalsIgnoreCase(r)
+                            || "STATE_HEADER".equalsIgnoreCase(r)
+                            || "REGIONAL_HEADER".equalsIgnoreCase(r));
+            if (claimsEmployeeRole) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             boolean isAdminRole = roles != null && roles.stream()
                     .anyMatch(r -> "ADMIN".equalsIgnoreCase(r) || "SUPER_ADMIN".equalsIgnoreCase(r));

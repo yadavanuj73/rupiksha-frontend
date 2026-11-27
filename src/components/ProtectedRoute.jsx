@@ -100,13 +100,16 @@ const ProtectedRoute = ({ children, role, allowKycPending = false }) => {
             return <AccessDeniedView />;
         }
 
-        // Handle pseudoroles
+        // Handle Admin route protection strictly
         if (role === 'ADMIN_OR_EMPLOYEE') {
+            if (isEmployee && !userRoles.includes('ADMIN')) {
+                return <Navigate to="/employee-login" state={{ from: location }} replace />;
+            }
             const isOtpVerified = sessionStorage.getItem('admin_otp_verified') === 'true';
             if (!isOtpVerified) {
                 return <Navigate to="/admin-login" state={{ from: location }} replace />;
             }
-            if (isEmployee || userRoles.includes('ADMIN')) return children;
+            if (userRoles.includes('ADMIN')) return children;
         }
         
         if (role === 'DISTRIBUTOR') {

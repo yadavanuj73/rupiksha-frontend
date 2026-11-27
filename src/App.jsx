@@ -22,6 +22,8 @@ const PageLoader = () => (
 const Login = lazy(() => import('./auth/Login'));
 const RegisterWizard = lazy(() => import('./auth/RegisterWizard'));
 const AdminLogin = lazy(() => import('./auth/AdminLogin'));
+const EmployeeLogin = lazy(() => import('./auth/EmployeeLogin'));
+const EmployeePortal = lazy(() => import('./employee/EmployeePortal'));
 const Home = lazy(() => import('./landing/Home'));
 const About = lazy(() => import('./landing/About'));
 const Contact = lazy(() => import('./landing/Contact'));
@@ -162,8 +164,10 @@ const SATrainingVideos = lazy(() => import('./super-distributor/pages/Support').
 const SuperDistributorOldReports_SA = lazy(() => import('./super-distributor/pages/OldReports'));
 
 import ProtectedRoute from './components/ProtectedRoute';
+import EmployeeProtectedRoute from './components/EmployeeProtectedRoute';
 import LockScreen from './components/LockScreen';
 import { useAuth } from './context/AuthContext';
+import { employeeAuthService } from './services/employeeApiService';
 
 // Smart catch-all: route authenticated users to their role's home instead of
 // dumping everyone on /login (which used to cause confusion — e.g. refreshing
@@ -178,13 +182,21 @@ function SmartFallback() {
       </div>
     );
   }
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    if (employeeAuthService.getToken() && employeeAuthService.getSessionUser()?.id) {
+      return <Navigate to="/employee/dashboard" replace />;
+    }
+    return <Navigate to="/login" replace />;
+  }
   const roles = (Array.isArray(user?.roles) && user.roles.length ? user.roles : [user?.role])
     .map((r) => String(typeof r === 'string' ? r : r?.name || ''))
     .map((r) => r.trim().replace(/^ROLE_/i, '').replace(/[\s-]+/g, '_').toUpperCase())
     .filter(Boolean);
-  if (roles.some((r) => ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r))) {
+  if (roles.includes('ADMIN')) {
     return <Navigate to="/admin" replace />;
+  }
+  if (roles.some((r) => ['NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'].includes(r))) {
+    return <Navigate to="/employee-login" replace />;
   }
   if (roles.includes('SUPER_DISTRIBUTOR')) return <Navigate to="/super-distributor" replace />;
   if (roles.includes('DISTRIBUTOR')) return <Navigate to="/distributor" replace />;
@@ -228,6 +240,10 @@ function App() {
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/adin" element={<Navigate to="/admin" replace />} />
+              <Route path="/employee-login" element={<EmployeeLogin />} />
+              <Route path="/employee/login" element={<EmployeeLogin />} />
+              <Route path="/employee" element={<Navigate to="/employee/dashboard" replace />} />
+              <Route path="/employee/*" element={<EmployeeProtectedRoute><EmployeePortal /></EmployeeProtectedRoute>} />
               <Route path="/certificate/verify/:certificateNumber" element={<VerifyCertificate />} />
               <Route path="/certificate/verify" element={<VerifyCertificate />} />
               <Route path="/verify/certificate/:certificateNumber" element={<VerifyCertificate />} />

@@ -473,6 +473,15 @@ const Login = () => {
                             </div>
                         </motion.div>
                     </div>
+                    <div className="mt-6 z-10 text-center">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/employee-login')}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 hover:bg-white border border-slate-200 text-slate-700 hover:text-indigo-700 text-xs font-bold shadow-sm transition cursor-pointer"
+                        >
+                            Employee Portal Login (National / State / Zonal Head) <ArrowRight size={14} />
+                        </button>
+                    </div>
                 </motion.div>
             </div>
         );

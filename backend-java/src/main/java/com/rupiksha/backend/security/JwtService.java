@@ -44,6 +44,25 @@ public class JwtService {
         return builder.signWith(secretKey).compact();
     }
 
+    public String createEmployeeAccessToken(UUID employeeId, String username, String employeeRole, Integer sessionVersion) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(appProperties.jwt().accessTokenMinutes() * 60);
+        List<String> roles = List.of("EMPLOYEE", employeeRole);
+        var builder = Jwts.builder()
+                .issuer(appProperties.jwt().issuer())
+                .subject(employeeId.toString())
+                .claim("username", username)
+                .claim("roles", roles)
+                .claim("principal_type", "EMPLOYEE")
+                .claim("employee_role", employeeRole)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(exp));
+        if (sessionVersion != null) {
+            builder.claim("employee_session_version", sessionVersion);
+        }
+        return builder.signWith(secretKey).compact();
+    }
+
     public Claims parse(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)

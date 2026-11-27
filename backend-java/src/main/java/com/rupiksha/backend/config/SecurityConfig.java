@@ -59,7 +59,10 @@ public class SecurityConfig {
                 "/api/v1/admin/auth/send-otp",
                 "/api/v1/admin/auth/resend-otp",
                 "/api/v1/admin/auth/verify-otp",
-                "/api/v1/admin/auth/logout"
+                "/api/v1/admin/auth/logout",
+                "/api/v1/employee/auth/login",
+                "/api/v1/employee/auth/refresh",
+                "/api/v1/employee/auth/logout"
         ));
 
         // Swagger and API docs are only public outside production.
@@ -86,8 +89,10 @@ public class SecurityConfig {
                                 "/api/v1/admin/payout-settings/**",
                                 "/api/admin/payout-settings/**",
                                 "/admin/payout-settings/**",
-                                "/api/v1/admin/bank-accounts/**"
+                                "/api/v1/admin/bank-accounts/**",
+                                "/api/v1/admin/employees/**"
                         ).hasRole("ADMIN")
+                        .requestMatchers("/api/v1/employee/**").hasRole("EMPLOYEE")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(eh -> eh.accessDeniedHandler(accessDeniedHandler()))

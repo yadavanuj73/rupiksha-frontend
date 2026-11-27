@@ -286,6 +286,15 @@ public class User {
     @Column(name = "aeps_commission_plan_expires_at")
     private Instant aepsCommissionPlanExpiresAt;
 
+    @Column(name = "onboarded_by_employee_id")
+    private UUID onboardedByEmployeeId;
+
+    @Column(name = "onboarded_by_employee_code", length = 40)
+    private String onboardedByEmployeeCode;
+
+    @Column(name = "zone_name", length = 100)
+    private String zoneName;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

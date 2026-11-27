@@ -307,7 +307,14 @@ const EnhancedMembersTable = () => {
                     lastAepsTxnDate: resolvedAepsDate,
                     createdAt: u.createdAt || u.created_at || new Date().toISOString()
                 };
-            }).filter(u => !(u.roles || []).includes('ADMIN') && u.username !== 'admin' && String(u.role).toUpperCase() !== 'ADMIN');
+            }).filter(u => {
+                const rolesUpper = (u.roles || []).map(r => String(r).toUpperCase());
+                const primaryUpper = String(u.role || '').toUpperCase();
+                const excluded = ['ADMIN', 'NATIONAL_HEADER', 'STATE_HEADER', 'REGIONAL_HEADER', 'EMPLOYEE'];
+                return u.username !== 'admin'
+                    && !excluded.includes(primaryUpper)
+                    && !rolesUpper.some(r => excluded.includes(r));
+            });
 
             setMembers(list);
         } catch (e) {
