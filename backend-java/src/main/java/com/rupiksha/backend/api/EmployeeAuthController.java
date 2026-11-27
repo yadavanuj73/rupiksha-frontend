@@ -50,8 +50,7 @@ public class EmployeeAuthController {
     @GetMapping("/me")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public EmployeeDtos.EmployeeProfileView me(@AuthenticationPrincipal JwtPrincipal principal) {
-        Employee emp = employeeAuthService.requireActiveAuthenticatedEmployee(principal);
-        return employeeAuthService.toProfileView(emp);
+        return employeeAuthService.getCurrentProfile(principal);
     }
 
     private String resolveIp(HttpServletRequest request) {

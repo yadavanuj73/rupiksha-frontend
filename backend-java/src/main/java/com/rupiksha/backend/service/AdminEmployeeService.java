@@ -277,6 +277,7 @@ public class AdminEmployeeService {
         return employeeAuthService.toProfileView(saved);
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.EmployeeProfileView> listEmployees(String roleFilter, String statusFilter, String search) {
         String cleanSearch = search == null || search.isBlank() ? null : search.trim().toLowerCase(Locale.ROOT);
         EmployeeRole targetRole = null;
@@ -299,12 +300,14 @@ public class AdminEmployeeService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public EmployeeDtos.EmployeeProfileView getEmployeeProfile(UUID employeeId) {
         Employee emp = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
         return employeeAuthService.toProfileView(emp);
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.EmployeeProfileView> listEligibleManagers(String rawChildRole) {
         EmployeeRole childRole = EmployeeRole.fromString(rawChildRole);
         if (childRole == EmployeeRole.NATIONAL_HEADER) {
@@ -319,6 +322,7 @@ public class AdminEmployeeService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public EmployeeDtos.EmployeePerformanceItem getEmployeePerformance(
             UUID employeeId,
             String fromDate,
@@ -337,6 +341,7 @@ public class AdminEmployeeService {
         return buildPerformanceItem(emp, allEmployees, allMemberUsers, start, end);
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.EmployeePerformanceItem> listPerformanceSummary(
             String roleFilter,
             String statusFilter,
@@ -371,6 +376,7 @@ public class AdminEmployeeService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getReadOnlyPermissionPreview(UUID employeeId) {
         EmployeeDtos.EmployeeProfileView profile = getEmployeeProfile(employeeId);
         List<EmployeeDtos.PermissionCategoryView> catalog = employeePermissionService.getCatalogView();
@@ -401,6 +407,7 @@ public class AdminEmployeeService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.EmployeeAuditLogView> getAuditLogs(UUID employeeId) {
         if (employeeId == null) {
             return employeeAuditService.getRecentAll();

@@ -35,6 +35,7 @@ public class EmployeePortalService {
     private final UserServiceRepository userServiceRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Transactional(readOnly = true)
     public EmployeeDtos.EmployeeDashboardResponse getDashboard(
             JwtPrincipal principal,
             String fromDate,
@@ -112,6 +113,7 @@ public class EmployeePortalService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.ScopedMemberSummary> listScopedMembers(
             JwtPrincipal principal,
             String roleFilter,
@@ -180,6 +182,7 @@ public class EmployeePortalService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public EmployeeDtos.ScopedMemberDetail getScopedMemberDetail(JwtPrincipal principal, UUID memberId) {
         Employee emp = employeeAuthService.requireActiveAuthenticatedEmployee(principal);
         Set<String> granted = employeePermissionService.getPermissionCodes(emp.getId());
@@ -245,6 +248,7 @@ public class EmployeePortalService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.ScopedMemberSummary> getCandidateParents(JwtPrincipal principal, String targetRoleRaw) {
         Employee emp = employeeAuthService.requireActiveAuthenticatedEmployee(principal);
         RoleName targetRole = parseMemberRole(targetRoleRaw);
@@ -423,6 +427,7 @@ public class EmployeePortalService {
         return toMemberSummary(saved, BigDecimal.ZERO, true);
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> listScopedTransactions(
             JwtPrincipal principal,
             String category,
@@ -476,6 +481,7 @@ public class EmployeePortalService {
         );
     }
 
+    @Transactional(readOnly = true)
     public EmployeeDtos.ScopedTransactionItem getScopedTransactionDetail(JwtPrincipal principal, String txnId) {
         Employee emp = employeeAuthService.requireActiveAuthenticatedEmployee(principal);
         Set<String> granted = employeePermissionService.getPermissionCodes(emp.getId());
@@ -491,6 +497,7 @@ public class EmployeePortalService {
                 .orElseThrow(() -> new AccessDeniedException("Transaction not found or outside your permitted hierarchy scope."));
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getScopedReports(
             JwtPrincipal principal,
             String category,
@@ -530,6 +537,7 @@ public class EmployeePortalService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.ScopedTransactionItem> exportScopedTransactions(
             JwtPrincipal principal,
             String category,
@@ -572,6 +580,7 @@ public class EmployeePortalService {
         return rows;
     }
 
+    @Transactional(readOnly = true)
     public List<EmployeeDtos.EmployeePerformanceItem> listSubordinateHierarchyEmployees(
             JwtPrincipal principal,
             String fromDate,

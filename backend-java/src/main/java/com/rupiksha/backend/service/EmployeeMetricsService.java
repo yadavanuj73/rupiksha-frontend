@@ -9,6 +9,7 @@ import com.rupiksha.backend.domain.*;
 import com.rupiksha.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.*;
@@ -46,6 +47,7 @@ public class EmployeeMetricsService {
             List<EmployeeDtos.ScopedTransactionItem> transactions
     ) {}
 
+    @Transactional(readOnly = true)
     public MetricsResult computeMetrics(
             Map<UUID, User> scopedUsers,
             Set<String> allowedCategories,
@@ -178,6 +180,13 @@ public class EmployeeMetricsService {
                 if (actingUser == null) continue;
                 Instant created = wt.getCreatedAt();
                 if (!withinDateRange(created, startInstant, endInstant)) continue;
+                String recipientLabel = null;
+                if (recipientId != null) {
+                    User knownRecipient = scopedUsers.get(recipientId);
+                    recipientLabel = knownRecipient != null
+                            ? knownRecipient.getUsername()
+                            : wt.getRecipient().getUsername();
+                }
                 collected.add(buildItem(
                         wt.getTransferReference(),
                         wt.getTransferReference(),
@@ -186,7 +195,7 @@ public class EmployeeMetricsService {
                         wt.getAmount(),
                         normalizeStatus(wt.getStatus()),
                         actingUser,
-                        wt.getRecipient() != null ? wt.getRecipient().getUsername() : null,
+                        recipientLabel,
                         wt.getRemarks(),
                         created
                 ));
@@ -227,6 +236,7 @@ public class EmployeeMetricsService {
         return aggregateItems(filtered, scopedUsers.values(), startInstant, endInstant);
     }
 
+    @Transactional(readOnly = true)
     public Optional<EmployeeDtos.ScopedTransactionItem> findSingleTransactionInScope(
             String transactionId,
             Map<UUID, User> scopedUsers,

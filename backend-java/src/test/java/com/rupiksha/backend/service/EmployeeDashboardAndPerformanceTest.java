@@ -10,6 +10,7 @@ import com.rupiksha.backend.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -199,5 +200,68 @@ class EmployeeDashboardAndPerformanceTest {
         Map<String, Object> preview = adminEmployeeService.getReadOnlyPermissionPreview(emp.getId());
         assertEquals(true, preview.get("readOnlyPreview"));
         assertEquals(false, preview.get("canModifyUsersOrWallets"));
+    }
+
+    @Test
+    void readMethodsDeclareTransactionalReadOnlyAndHandleCrossScopeWalletRecipient() throws Exception {
+        Transactional listPerfTx = AdminEmployeeService.class
+                .getMethod("listPerformanceSummary", String.class, String.class, String.class, String.class, String.class)
+                .getAnnotation(Transactional.class);
+        assertNotNull(listPerfTx);
+        assertTrue(listPerfTx.readOnly());
+
+        Transactional singlePerfTx = AdminEmployeeService.class
+                .getMethod("getEmployeePerformance", UUID.class, String.class, String.class)
+                .getAnnotation(Transactional.class);
+        assertNotNull(singlePerfTx);
+        assertTrue(singlePerfTx.readOnly());
+
+        Transactional computeTx = EmployeeMetricsService.class
+                .getMethod("computeMetrics", Map.class, Set.class, Instant.class, Instant.class, String.class, String.class, String.class)
+                .getAnnotation(Transactional.class);
+        assertNotNull(computeTx);
+        assertTrue(computeTx.readOnly());
+
+        Transactional portalDashTx = EmployeePortalService.class
+                .getMethod("getDashboard", com.rupiksha.backend.security.JwtPrincipal.class, String.class, String.class)
+                .getAnnotation(Transactional.class);
+        assertNotNull(portalDashTx);
+        assertTrue(portalDashTx.readOnly());
+
+        // Verify WalletTransfer where sender is in scope and recipient is outside scope works cleanly
+        User senderInScope = new User();
+        senderInScope.setId(UUID.randomUUID());
+        senderInScope.setUsername("sender.north");
+        senderInScope.setFullName("Sender North");
+        senderInScope.setStateName("Delhi");
+        Role r = new Role(); r.setName(RoleName.DISTRIBUTOR);
+        senderInScope.setRoles(Set.of(r));
+
+        User recipientOutScope = new User();
+        recipientOutScope.setId(UUID.randomUUID());
+        recipientOutScope.setUsername("recipient.south");
+
+        WalletTransfer wt = new WalletTransfer();
+        wt.setId(UUID.randomUUID());
+        wt.setTransferReference("W2W-TEST-1");
+        wt.setSender(senderInScope);
+        wt.setRecipient(recipientOutScope);
+        wt.setAmount(new BigDecimal("400.00"));
+        wt.setStatus("SUCCESS");
+        wt.setRemarks("Partner transfer");
+
+        when(aepsRepository.findAll()).thenReturn(List.of());
+        when(payoutRepository.findAll()).thenReturn(List.of());
+        when(rechargeRepository.findAll()).thenReturn(List.of());
+        when(bbpsRepository.findAll()).thenReturn(List.of());
+        when(walletTransferRepository.findAll()).thenReturn(List.of(wt));
+        when(txnRepository.findAll()).thenReturn(List.of());
+
+        EmployeeMetricsService.MetricsResult res = metricsService.computeMetrics(
+                Map.of(senderInScope.getId(), senderInScope), null, null, null, "ALL", null, null
+        );
+        assertEquals(1, res.totalTransactions());
+        assertEquals(0, new BigDecimal("400.00").compareTo(res.totalVolume()));
+        assertEquals("recipient.south", res.transactions().get(0).targetAccountOrMobile());
     }
 }

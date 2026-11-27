@@ -97,18 +97,34 @@ export default function EmployeeManager() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [empRes, perfRes, catRes, zoneRes, logsRes] = await Promise.all([
+      const results = await Promise.allSettled([
         adminEmployeeService.listEmployees(),
         adminEmployeeService.listPerformance({ fromDate, toDate }),
         adminEmployeeService.getPermissionCatalog(),
         adminEmployeeService.getZoneCatalog(),
         adminEmployeeService.getAuditLogs(),
       ]);
-      setEmployees(Array.isArray(empRes) ? empRes : []);
-      setPerformanceList(Array.isArray(perfRes) ? perfRes : []);
-      setPermCatalog(Array.isArray(catRes) ? catRes : []);
-      if (zoneRes) setZoneCatalog(zoneRes);
-      setAuditLogs(Array.isArray(logsRes) ? logsRes : []);
+      const [empRes, perfRes, catRes, zoneRes, logsRes] = results;
+      const errors = [];
+
+      if (empRes.status === 'fulfilled') setEmployees(Array.isArray(empRes.value) ? empRes.value : []);
+      else errors.push(empRes.reason?.message || 'Employees load failed');
+
+      if (perfRes.status === 'fulfilled') setPerformanceList(Array.isArray(perfRes.value) ? perfRes.value : []);
+      else errors.push(perfRes.reason?.message || 'Performance load failed');
+
+      if (catRes.status === 'fulfilled') setPermCatalog(Array.isArray(catRes.value) ? catRes.value : []);
+      else errors.push(catRes.reason?.message || 'Permissions catalog load failed');
+
+      if (zoneRes.status === 'fulfilled' && zoneRes.value) setZoneCatalog(zoneRes.value);
+      else if (zoneRes.status === 'rejected') errors.push(zoneRes.reason?.message || 'Zones load failed');
+
+      if (logsRes.status === 'fulfilled') setAuditLogs(Array.isArray(logsRes.value) ? logsRes.value : []);
+      else errors.push(logsRes.reason?.message || 'Audit logs load failed');
+
+      if (errors.length > 0) {
+        setBanner({ type: 'error', text: errors[0] });
+      }
     } catch (err) {
       setBanner({ type: 'error', text: err?.message || 'Failed to load employee module data.' });
     } finally {

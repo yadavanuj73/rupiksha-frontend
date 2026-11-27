@@ -177,6 +177,13 @@ public class EmployeeAuthService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public EmployeeDtos.EmployeeProfileView getCurrentProfile(JwtPrincipal principal) {
+        Employee emp = requireActiveAuthenticatedEmployee(principal);
+        return toProfileView(emp);
+    }
+
+    @Transactional(readOnly = true)
     public Employee requireActiveAuthenticatedEmployee(JwtPrincipal principal) {
         if (principal == null || principal.userId() == null) {
             throw new AccessDeniedException("Employee authentication required");
@@ -198,6 +205,7 @@ public class EmployeeAuthService {
         return emp;
     }
 
+    @Transactional(readOnly = true)
     public EmployeeDtos.EmployeeProfileView toProfileView(Employee emp) {
         List<EmployeeScope> scopes = employeeScopeRepository.findByEmployeeId(emp.getId());
         List<String> permissions = new ArrayList<>(employeePermissionService.getPermissionCodes(emp.getId()));
