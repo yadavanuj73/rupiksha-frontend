@@ -405,7 +405,9 @@ export default function EmployeeManager() {
     const sh = employees.filter((e) => e.role === 'STATE_HEADER').length;
     const zh = employees.filter((e) => e.role === 'REGIONAL_HEADER').length;
     const totalOnboarded = performanceList.reduce((acc, p) => acc + Number(p.directUsersOnboarded || 0), 0);
-    return { total: employees.length, active, nh, sh, zh, totalOnboarded };
+    const totalTxns = performanceList.reduce((acc, p) => acc + Number(p.totalTransactions || 0), 0);
+    const totalVolume = performanceList.reduce((acc, p) => acc + Number(p.totalVolume || 0), 0);
+    return { total: employees.length, active, nh, sh, zh, totalOnboarded, totalTxns, totalVolume };
   }, [employees, performanceList]);
 
   const filteredStateChoices = useMemo(() => {
@@ -416,27 +418,22 @@ export default function EmployeeManager() {
   return (
     <div className="space-y-6 text-slate-900 font-['Inter',sans-serif]">
       {/* Header Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2.5">
-            <Shield className="w-5 h-5 text-indigo-600" />
-            Employee Management, Hierarchy &amp; Performance
-          </h2>
-          <p className="text-xs text-slate-600 mt-1">
-            Provision National Head, State Head, and Zonal Head credentials, enforce role-bound geographical scopes, configure permissions, and monitor live DB performance.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+      <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex flex-nowrap items-center justify-between gap-3">
+        <h2 className="text-base sm:text-xl font-extrabold text-slate-900 flex items-center gap-2.5 min-w-0 truncate">
+          <Shield className="w-5 h-5 text-indigo-600 shrink-0" />
+          <span className="truncate">Employee Management, Hierarchy &amp; Performance</span>
+        </h2>
+        <div className="flex flex-nowrap items-center gap-2.5 shrink-0">
           <button
             onClick={loadAll}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 whitespace-nowrap cursor-pointer"
           >
             <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm whitespace-nowrap cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Create Employee
@@ -482,9 +479,9 @@ export default function EmployeeManager() {
           <div className="text-xs text-slate-600 mt-1">Direct partner accounts created</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Audit Events Recorded</div>
-          <div className="text-2xl font-extrabold text-slate-900 mt-1">{auditLogs.length}</div>
-          <div className="text-xs text-slate-600 mt-1">Logins, permission updates &amp; onboarding</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Hierarchy Transactions</div>
+          <div className="text-2xl font-extrabold text-slate-900 mt-1">{summaryKpis.totalTxns}</div>
+          <div className="text-xs text-slate-600 mt-1">{formatINR(summaryKpis.totalVolume)} verified volume</div>
         </div>
       </div>
 

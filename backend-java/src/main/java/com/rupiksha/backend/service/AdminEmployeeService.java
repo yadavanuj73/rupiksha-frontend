@@ -448,9 +448,7 @@ public class AdminEmployeeService {
                 else if (roleName == RoleName.SUPER_DISTRIBUTOR) directSuperDistributors++;
             }
 
-            boolean inScope = employeeScopeService.isUserInEmployeeScope(u, emp, scopes)
-                    || (u.getOnboardedByEmployeeId() != null
-                    && (emp.getId().equals(u.getOnboardedByEmployeeId()) || subordinateIds.contains(u.getOnboardedByEmployeeId())));
+            boolean inScope = employeeScopeService.isUserInHierarchyAndScope(u, emp, scopes, subordinateIds);
 
             if (inScope) {
                 hierarchyScopedUsers.put(u.getId(), u);

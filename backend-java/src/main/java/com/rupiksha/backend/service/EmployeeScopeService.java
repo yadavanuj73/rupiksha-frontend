@@ -300,6 +300,22 @@ public class EmployeeScopeService {
         );
     }
 
+    public boolean isUserInHierarchyAndScope(
+            User user,
+            Employee employee,
+            List<EmployeeScope> scopes,
+            Set<UUID> subordinateEmployeeIds
+    ) {
+        if (!isMemberUser(user) || employee == null) {
+            return false;
+        }
+        UUID onboardedBy = user.getOnboardedByEmployeeId();
+        boolean inEmployeeHierarchy = onboardedBy != null
+                && (employee.getId().equals(onboardedBy)
+                || (subordinateEmployeeIds != null && subordinateEmployeeIds.contains(onboardedBy)));
+        return inEmployeeHierarchy && isUserInEmployeeScope(user, employee, scopes);
+    }
+
     public boolean isUserInEmployeeScope(User user, Employee employee, List<EmployeeScope> scopes) {
         if (!isMemberUser(user) || employee == null) {
             return false;

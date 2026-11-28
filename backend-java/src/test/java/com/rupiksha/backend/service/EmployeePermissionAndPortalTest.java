@@ -132,13 +132,22 @@ class EmployeePermissionAndPortalTest {
         biharRet.setUsername("ret.patna");
         biharRet.setFullName("Patna Retailer");
         biharRet.setStateName("Bihar");
+        biharRet.setOnboardedByEmployeeId(stateHead.getId());
         biharRet.setRoles(Set.of(retailerRole));
+
+        User unownedBiharRet = new User();
+        unownedBiharRet.setId(UUID.randomUUID());
+        unownedBiharRet.setUsername("ret.legacy.patna");
+        unownedBiharRet.setFullName("Legacy Patna Retailer");
+        unownedBiharRet.setStateName("Bihar");
+        unownedBiharRet.setRoles(Set.of(retailerRole));
 
         User mhRet = new User();
         mhRet.setId(UUID.randomUUID());
         mhRet.setUsername("ret.pune");
         mhRet.setFullName("Pune Retailer");
         mhRet.setStateName("Maharashtra");
+        mhRet.setOnboardedByEmployeeId(stateHead.getId());
         mhRet.setRoles(Set.of(retailerRole));
 
         User biharDist = new User();
@@ -146,10 +155,12 @@ class EmployeePermissionAndPortalTest {
         biharDist.setUsername("dist.patna");
         biharDist.setFullName("Patna Dist");
         biharDist.setStateName("Bihar");
+        biharDist.setOnboardedByEmployeeId(stateHead.getId());
         biharDist.setRoles(Set.of(distributorRole));
 
-        when(userRepository.findAll()).thenReturn(List.of(biharRet, mhRet, biharDist));
+        when(userRepository.findAll()).thenReturn(List.of(biharRet, unownedBiharRet, mhRet, biharDist));
         when(userRepository.findById(mhRet.getId())).thenReturn(Optional.of(mhRet));
+        when(userRepository.findById(unownedBiharRet.getId())).thenReturn(Optional.of(unownedBiharRet));
         when(userRepository.findById(biharRet.getId())).thenReturn(Optional.of(biharRet));
         when(walletRepository.findByUserId(biharRet.getId())).thenReturn(Optional.empty());
         when(walletRepository.findByUserIdIn(any())).thenReturn(List.of());
@@ -161,8 +172,9 @@ class EmployeePermissionAndPortalTest {
         // Requesting DISTRIBUTOR without VIEW_DISTRIBUTORS -> 403
         assertThrows(AccessDeniedException.class, () -> portalService.listScopedMembers(empPrincipal, "DISTRIBUTOR", null, null));
 
-        // Direct ID lookup on Maharashtra retailer -> IDOR blocked (403)
+        // Direct ID lookup on Maharashtra retailer or unowned Bihar legacy retailer -> IDOR blocked (403)
         assertThrows(AccessDeniedException.class, () -> portalService.getScopedMemberDetail(empPrincipal, mhRet.getId()));
+        assertThrows(AccessDeniedException.class, () -> portalService.getScopedMemberDetail(empPrincipal, unownedBiharRet.getId()));
 
         // Direct ID lookup on Bihar retailer -> allowed, and KYC status masked since VIEW_USER_KYC_STATUS not granted
         EmployeeDtos.ScopedMemberDetail detail = portalService.getScopedMemberDetail(empPrincipal, biharRet.getId());

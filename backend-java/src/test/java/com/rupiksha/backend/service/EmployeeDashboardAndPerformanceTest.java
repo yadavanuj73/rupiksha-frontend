@@ -264,4 +264,54 @@ class EmployeeDashboardAndPerformanceTest {
         assertEquals(0, new BigDecimal("400.00").compareTo(res.totalVolume()));
         assertEquals("recipient.south", res.transactions().get(0).targetAccountOrMobile());
     }
+
+    @Test
+    void freshEmployeeReturnsZeroEvenWhenLegacyUsersExistInSameGeographicalZone() {
+        Employee freshZonal = new Employee();
+        freshZonal.setId(UUID.randomUUID());
+        freshZonal.setEmployeeCode("EMP-001");
+        freshZonal.setUsername("anuj001");
+        freshZonal.setFullName("Fresh Zonal");
+        freshZonal.setEmployeeRole(EmployeeRole.REGIONAL_HEADER);
+        freshZonal.setStatus(EmployeeStatus.ACTIVE);
+        freshZonal.setTerritoryLabel("North Zone");
+
+        EmployeeScope northZone = new EmployeeScope();
+        northZone.setEmployee(freshZonal);
+        northZone.setScopeType(EmployeeScopeType.ZONE);
+        northZone.setZoneName("North Zone");
+
+        Role retRole = new Role(); retRole.setName(RoleName.RETAILER);
+        User legacyNorthUser = new User();
+        legacyNorthUser.setId(UUID.randomUUID());
+        legacyNorthUser.setUsername("legacy.delhi");
+        legacyNorthUser.setFullName("Legacy Delhi Retailer");
+        legacyNorthUser.setStateName("Delhi");
+        legacyNorthUser.setRoles(Set.of(retRole));
+
+        AepsTransactionEngine oldTxn = AepsTransactionEngine.builder()
+                .transactionId("OLD-AEPS-1").referenceNumber("OLD-REF").serviceType("CASH_WITHDRAWAL")
+                .provider("FINGPAY").merchantId("M9").userId(legacyNorthUser.getId())
+                .amount(new BigDecimal("7.00")).status("SUCCESS").workflowState("DONE")
+                .initiatedAt(LocalDateTime.now().minusMonths(2)).lastUpdated(LocalDateTime.now().minusMonths(2)).build();
+
+        when(employeeRepository.findById(freshZonal.getId())).thenReturn(Optional.of(freshZonal));
+        when(employeeRepository.findAll()).thenReturn(List.of(freshZonal));
+        when(employeeScopeRepository.findByEmployeeId(freshZonal.getId())).thenReturn(List.of(northZone));
+        when(userRepository.findAll()).thenReturn(List.of(legacyNorthUser));
+        when(aepsRepository.findAll()).thenReturn(List.of(oldTxn));
+        when(payoutRepository.findAll()).thenReturn(List.of());
+        when(rechargeRepository.findAll()).thenReturn(List.of());
+        when(bbpsRepository.findAll()).thenReturn(List.of());
+        when(walletTransferRepository.findAll()).thenReturn(List.of());
+        when(txnRepository.findAll()).thenReturn(List.of());
+
+        EmployeeDtos.EmployeePerformanceItem perf = adminEmployeeService.getEmployeePerformance(freshZonal.getId(), null, null);
+        assertEquals(0, perf.directUsersOnboarded());
+        assertEquals(0, perf.hierarchyTotalUsers());
+        assertEquals(0, perf.totalTransactions());
+        assertEquals(0, BigDecimal.ZERO.compareTo(perf.totalVolume()));
+        assertTrue(perf.serviceBreakdown().isEmpty());
+        assertTrue(perf.dailyPerformance().isEmpty());
+    }
 }

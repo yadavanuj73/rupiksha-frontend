@@ -209,9 +209,7 @@ public class EmployeePortalService {
         List<Employee> allEmployees = employeeRepository.findAll();
         List<EmployeeScope> scopes = employeeScopeRepository.findByEmployeeId(emp.getId());
         Set<UUID> subordinateIds = employeeScopeService.resolveSubordinateEmployeeIds(emp.getId(), allEmployees);
-        boolean inScope = employeeScopeService.isUserInEmployeeScope(target, emp, scopes)
-                || (target.getOnboardedByEmployeeId() != null
-                && (emp.getId().equals(target.getOnboardedByEmployeeId()) || subordinateIds.contains(target.getOnboardedByEmployeeId())));
+        boolean inScope = employeeScopeService.isUserInHierarchyAndScope(target, emp, scopes, subordinateIds);
 
         if (!inScope) {
             employeeAuditService.log(
@@ -649,9 +647,7 @@ public class EmployeePortalService {
                 else if (rn == RoleName.DISTRIBUTOR) directD++;
                 else if (rn == RoleName.SUPER_DISTRIBUTOR) directSD++;
             }
-            boolean inScope = employeeScopeService.isUserInEmployeeScope(u, sub, subScopes)
-                    || (u.getOnboardedByEmployeeId() != null
-                    && (sub.getId().equals(u.getOnboardedByEmployeeId()) || nestedSubIds.contains(u.getOnboardedByEmployeeId())));
+            boolean inScope = employeeScopeService.isUserInHierarchyAndScope(u, sub, subScopes, nestedSubIds);
             if (inScope) {
                 scopedUsers.put(u.getId(), u);
                 if (rn == RoleName.RETAILER) hR++;
@@ -688,11 +684,7 @@ public class EmployeePortalService {
     private Map<UUID, User> resolveScopedUsersMap(Employee emp, List<EmployeeScope> scopes, Set<UUID> subordinateIds) {
         Map<UUID, User> result = new LinkedHashMap<>();
         for (User u : userRepository.findAll()) {
-            if (!employeeScopeService.isMemberUser(u)) continue;
-            boolean inScope = employeeScopeService.isUserInEmployeeScope(u, emp, scopes)
-                    || (u.getOnboardedByEmployeeId() != null
-                    && (emp.getId().equals(u.getOnboardedByEmployeeId()) || subordinateIds.contains(u.getOnboardedByEmployeeId())));
-            if (inScope) {
+            if (employeeScopeService.isUserInHierarchyAndScope(u, emp, scopes, subordinateIds)) {
                 result.put(u.getId(), u);
             }
         }
